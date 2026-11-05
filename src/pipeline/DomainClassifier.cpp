@@ -520,6 +520,8 @@ void DomainClassifier::enrich_ast_with_business_intelligence(model::SemanticAST&
     const auto classification = classify(ast);
     ast.system_summary.detected_domain = classification.domain_name;
     ast.system_summary.confidence = classification.confidence;
+    ast.system_summary.domain_icon = classification.icon;
+    ast.system_summary.industry_tags = classification.industry_tags;
 
     // 1. Conteo de roles y búsqueda del núcleo gravitacional
     size_t fact_count = 0;

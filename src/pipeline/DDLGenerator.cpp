@@ -56,8 +56,17 @@ std::string DDLGenerator::generate_data_dictionary_markdown(const model::Semanti
 
     ss << "| Metrica de Arquitectura | Diagnostico Inferido |\n";
     ss << "| :--- | :--- |\n";
-    ss << "| **Dominio Inferido** | " << ast.system_summary.detected_domain << " |\n";
+    ss << "| **Dominio Inferido** | " << (ast.system_summary.domain_icon.empty() ? "" : ast.system_summary.domain_icon + " ")
+       << ast.system_summary.detected_domain << " |\n";
     ss << "| **Nivel de Confianza** | " << std::fixed << std::setprecision(1) << (ast.system_summary.confidence * 100.0) << "% |\n";
+    if (!ast.system_summary.industry_tags.empty()) {
+        ss << "| **Sectores Afines** | ";
+        for (size_t i = 0; i < ast.system_summary.industry_tags.size(); ++i) {
+            if (i > 0) ss << ", ";
+            ss << ast.system_summary.industry_tags[i];
+        }
+        ss << " |\n";
+    }
     if (!ast.system_summary.architecture_pattern.empty()) {
         ss << "| **Patron de Arquitectura** | " << ast.system_summary.architecture_pattern << " |\n";
     }

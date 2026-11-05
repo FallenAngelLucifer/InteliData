@@ -75,6 +75,8 @@ struct SystemSummaryAST {
     // Diagnóstico ejecutivo y arquitectura del sistema
     std::string architecture_pattern;
     std::string business_narrative;
+    std::string domain_icon;
+    std::vector<std::string> industry_tags;
     std::vector<FunctionalSubdomainAST> subdomains;
     std::vector<std::string> executive_insights;
 

@@ -146,6 +146,8 @@ nlohmann::json SystemSummaryAST::to_json() const {
 
     if (!architecture_pattern.empty()) j["architecture_pattern"] = architecture_pattern;
     if (!business_narrative.empty()) j["business_narrative"] = business_narrative;
+    if (!domain_icon.empty()) j["domain_icon"] = domain_icon;
+    if (!industry_tags.empty()) j["industry_tags"] = industry_tags;
     if (!executive_insights.empty()) j["executive_insights"] = executive_insights;
 
     nlohmann::json sub_arr = nlohmann::json::array();
@@ -167,6 +169,10 @@ SystemSummaryAST SystemSummaryAST::from_json(const nlohmann::json& j) {
 
     sum.architecture_pattern = j.value("architecture_pattern", "");
     sum.business_narrative = j.value("business_narrative", "");
+    sum.domain_icon = j.value("domain_icon", "");
+    if (j.contains("industry_tags")) {
+        sum.industry_tags = j["industry_tags"].get<std::vector<std::string>>();
+    }
     if (j.contains("executive_insights")) {
         sum.executive_insights = j["executive_insights"].get<std::vector<std::string>>();
     }

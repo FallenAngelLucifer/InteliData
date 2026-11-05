@@ -80,7 +80,8 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     ImGui::TextColored(ImVec4(0.2f, 0.85f, 1.0f, 1.0f), "DIAGNOSTICO SEMANTICO Y ARQUITECTURA DEL NEGOCIO");
     ImGui::Spacing();
 
-    render_badge(ast.system_summary.detected_domain.c_str(), ImVec4(0.18f, 0.65f, 0.40f, 1.0f));
+    std::string domain_badge_text = (ast.system_summary.domain_icon.empty() ? "" : ast.system_summary.domain_icon + " ") + ast.system_summary.detected_domain;
+    render_badge(domain_badge_text.c_str(), ImVec4(0.18f, 0.65f, 0.40f, 1.0f));
     ImGui::SameLine();
 
     char conf_buf[32];
@@ -90,6 +91,15 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     if (!ast.system_summary.architecture_pattern.empty()) {
         ImGui::SameLine();
         render_badge(ast.system_summary.architecture_pattern.c_str(), ImVec4(0.60f, 0.35f, 0.85f, 1.0f));
+    }
+
+    if (!ast.system_summary.industry_tags.empty()) {
+        ImGui::Spacing();
+        ImGui::TextDisabled("Sectores Afines:");
+        for (const auto& tag : ast.system_summary.industry_tags) {
+            ImGui::SameLine();
+            render_badge(("# " + tag).c_str(), ImVec4(0.20f, 0.32f, 0.45f, 1.0f));
+        }
     }
 
     ImGui::Spacing();
