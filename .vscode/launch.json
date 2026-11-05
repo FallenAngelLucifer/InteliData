@@ -9,9 +9,37 @@
             "windows": {
                 "program": "${workspaceFolder}/build/Release/intelidata-gui.exe"
             },
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "windows": {
+                "MIMode": "gdb",
+                "miDebuggerPath": "gdb.exe"
+            },
+            "setupCommands": [
+                {
+                    "description": "Habilitar formato avanzado para GDB",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Compilar Proyecto (CMake)"
+        },
+        {
+            "name": "InteliData: Ejecutar con Northwind",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/intelidata-gui",
+            "windows": {
+                "program": "${workspaceFolder}/build/Release/intelidata-gui.exe"
+            },
             "args": [
                 "--input",
-                "${workspaceFolder}/samples/ecommerce_obfuscated.db"
+                "${workspaceFolder}/samples/northwind.db"
             ],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",

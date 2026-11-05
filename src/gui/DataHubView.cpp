@@ -233,21 +233,28 @@ void DataHubView::render_presets() {
     };
 
     render_preset_card(
-        "1. E-Commerce Multitabla Ofuscado (SQLite)",
+        "1. Northwind - Base de Datos Comercial Relacional (SQLite)",
+        "Esquema relacional clasico de 12 tablas (Orders, Customers, OrderDetails, Products, Categories, Suppliers, Shippers, Employees, etc.), 25 dependencias relacionales PIND e importes de facturacion bajo Ley de Benford.",
+        "samples/northwind.db",
+        "Cargar Northwind SQLite"
+    );
+
+    render_preset_card(
+        "2. E-Commerce Multitabla Ofuscado (SQLite)",
         "Base de datos con 4 tablas con nombres ofuscados (tbl_001_usr, tbl_002_ord, tbl_003_itm, tbl_004_log). Contiene dependencias PIND exactas, montos bajo Ley de Benford, Cadenas de Markov y particion espectral en 2 subdominios.",
         "samples/ecommerce_obfuscated.db",
         "Cargar E-Commerce Ofuscado"
     );
 
     render_preset_card(
-        "2. Transacciones Financieras (CSV)",
+        "3. Transacciones Financieras (CSV)",
         "Montos monetarios distribuidos logaritmicamente que verifican la Ley de Benford, acompanados de estados de ciclo de vida.",
         "samples/samples_transacciones.csv",
         "Cargar Transacciones CSV"
     );
 
     render_preset_card(
-        "3. Muestra Rapida de Clientes y Pedidos (CSV)",
+        "4. Muestra Rapida de Clientes y Pedidos (CSV)",
         "Dataset plano y compacto para verificacion rapida de unicidad, calculo de Welford y tiempo de respuesta.",
         "samples/sample.csv",
         "Cargar Muestra Ligera CSV"
