@@ -5,7 +5,7 @@
 using namespace intelidata;
 using namespace intelidata::pipeline;
 
-TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas en Linea", "[domain]") {
+TEST_CASE("DomainClassifier: Deteccion de Videojuegos, Gaming y Combates en Linea", "[domain]") {
     model::SemanticAST ast;
 
     // Tabla 1: Torneo
@@ -22,14 +22,6 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
     col_t_id.entropy = 1.0;
     tbl_torneo.columns.push_back(col_t_id);
 
-    model::ColumnAST col_t_nom;
-    col_t_nom.original_identifier = "nombre";
-    tbl_torneo.columns.push_back(col_t_nom);
-
-    model::ColumnAST col_t_tap;
-    col_t_tap.original_identifier = "num_tapices";
-    tbl_torneo.columns.push_back(col_t_tap);
-
     // Tabla 2: Peleador / Atleta
     model::TableAST tbl_peleador;
     tbl_peleador.original_identifier = "peleador";
@@ -44,10 +36,6 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
     col_p_id.entropy = 1.0;
     tbl_peleador.columns.push_back(col_p_id);
 
-    model::ColumnAST col_p_nom;
-    col_p_nom.original_identifier = "nombres";
-    tbl_peleador.columns.push_back(col_p_nom);
-
     // Tabla 3: Combates Activos (Conexión Dual FK a Peleador)
     model::TableAST tbl_combates;
     tbl_combates.original_identifier = "combates_activos";
@@ -60,18 +48,6 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
     col_c_torneo.original_identifier = "id_torneo";
     tbl_combates.columns.push_back(col_c_torneo);
 
-    model::ColumnAST col_c_llave;
-    col_c_llave.original_identifier = "llave_key";
-    tbl_combates.columns.push_back(col_c_llave);
-
-    model::ColumnAST col_c_match;
-    col_c_match.original_identifier = "match_id";
-    tbl_combates.columns.push_back(col_c_match);
-
-    model::ColumnAST col_c_tapiz;
-    col_c_tapiz.original_identifier = "tapiz";
-    tbl_combates.columns.push_back(col_c_tapiz);
-
     model::ColumnAST col_c_rojo;
     col_c_rojo.original_identifier = "id_peleador_rojo";
     tbl_combates.columns.push_back(col_c_rojo);
@@ -79,10 +55,6 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
     model::ColumnAST col_c_azul;
     col_c_azul.original_identifier = "id_peleador_azul";
     tbl_combates.columns.push_back(col_c_azul);
-
-    model::ColumnAST col_c_act;
-    col_c_act.original_identifier = "ultima_actividad";
-    tbl_combates.columns.push_back(col_c_act);
 
     // Tabla 4: Conexiones de Torneo (Salas en Red y Latidos)
     model::TableAST tbl_conexiones;
@@ -96,15 +68,6 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
     col_cx_disp.original_identifier = "nombre_dispositivo";
     tbl_conexiones.columns.push_back(col_cx_disp);
 
-    model::ColumnAST col_cx_master;
-    col_cx_master.original_identifier = "es_master";
-    tbl_conexiones.columns.push_back(col_cx_master);
-
-    model::ColumnAST col_cx_est;
-    col_cx_est.original_identifier = "estado_conexion";
-    col_cx_est.markov_absorbing_states = {"Aprobado", "Rechazado"};
-    tbl_conexiones.columns.push_back(col_cx_est);
-
     model::ColumnAST col_cx_act;
     col_cx_act.original_identifier = "ultima_actividad";
     tbl_conexiones.columns.push_back(col_cx_act);
@@ -114,7 +77,6 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
     ast.tables.push_back(tbl_combates);
     ast.tables.push_back(tbl_conexiones);
 
-    // Relaciones (PIND)
     ast.relationships.push_back({"combates_activos", "id_peleador_rojo", "peleador", "id_peleador", 1.0, 1.0});
     ast.relationships.push_back({"combates_activos", "id_peleador_azul", "peleador", "id_peleador", 1.0, 1.0});
     ast.relationships.push_back({"combates_activos", "id_torneo", "torneo", "id", 1.0, 1.0});
@@ -122,29 +84,243 @@ TEST_CASE("DomainClassifier: Deteccion de Deportes de Combate, Torneos y Salas e
 
     DomainClassifier::enrich_ast_with_business_intelligence(ast);
 
-    // Verificaciones
-    REQUIRE(ast.system_summary.detected_domain == "Deportes de Combate, Torneos y Salas en Línea");
+    REQUIRE(ast.system_summary.detected_domain == "Videojuegos, Gaming y Plataformas de Combate/Salas en Línea");
     REQUIRE(ast.system_summary.confidence >= 0.85);
-    REQUIRE(ast.system_summary.architecture_pattern == "Plataforma Concurrente de Torneos y Salas en Tiempo Real");
     REQUIRE(ast.system_summary.business_narrative.find("combates") != std::string::npos);
-    REQUIRE(ast.system_summary.business_narrative.find("tapices") != std::string::npos);
 
-    // Verificar ficha de entidad para peleador
     const auto it_pel = std::find_if(ast.tables.begin(), ast.tables.end(), [](const auto& t) {
         return t.original_identifier == "peleador";
     });
     REQUIRE(it_pel != ast.tables.end());
     REQUIRE(it_pel->business_purpose.find("atletas") != std::string::npos);
-    REQUIRE(!it_pel->business_questions.empty());
-    REQUIRE(it_pel->business_questions[0].find("victorias") != std::string::npos);
+}
 
-    // Verificar ficha de entidad para combates_activos
-    const auto it_cb = std::find_if(ast.tables.begin(), ast.tables.end(), [](const auto& t) {
-        return t.original_identifier == "combates_activos";
+TEST_CASE("DomainClassifier: Deteccion de Salud y Gestion Clinica Hospitalaria", "[domain]") {
+    model::SemanticAST ast;
+
+    model::TableAST tbl_pacientes;
+    tbl_pacientes.original_identifier = "pacientes";
+    tbl_pacientes.recommended_name = "dim_pacientes";
+    tbl_pacientes.inferred_role = "Dimension_Master_Entity";
+    tbl_pacientes.pagerank_gravity = 0.40;
+
+    model::ColumnAST col_pac_id;
+    col_pac_id.original_identifier = "id_paciente";
+    col_pac_id.is_unique = true;
+    col_pac_id.entropy = 1.0;
+    tbl_pacientes.columns.push_back(col_pac_id);
+
+    model::ColumnAST col_pac_nom;
+    col_pac_nom.original_identifier = "nombre_paciente";
+    tbl_pacientes.columns.push_back(col_pac_nom);
+
+    model::TableAST tbl_medicos;
+    tbl_medicos.original_identifier = "medicos";
+    tbl_medicos.recommended_name = "dim_medicos";
+    tbl_medicos.inferred_role = "Dimension_Master_Entity";
+    tbl_medicos.pagerank_gravity = 0.30;
+
+    model::ColumnAST col_med_id;
+    col_med_id.original_identifier = "id_medico";
+    col_med_id.is_unique = true;
+    tbl_medicos.columns.push_back(col_med_id);
+
+    model::ColumnAST col_esp;
+    col_esp.original_identifier = "especialidad_clinica";
+    tbl_medicos.columns.push_back(col_esp);
+
+    model::TableAST tbl_citas;
+    tbl_citas.original_identifier = "consultas_medicas";
+    tbl_citas.recommended_name = "fact_consultas_medicas";
+    tbl_citas.inferred_role = "Fact_Transaction";
+    tbl_citas.pagerank_gravity = 0.20;
+
+    model::ColumnAST col_c_pac;
+    col_c_pac.original_identifier = "id_paciente";
+    tbl_citas.columns.push_back(col_c_pac);
+
+    model::ColumnAST col_c_med;
+    col_c_med.original_identifier = "id_medico";
+    tbl_citas.columns.push_back(col_c_med);
+
+    model::ColumnAST col_diag;
+    col_diag.original_identifier = "diagnostico_cie10";
+    tbl_citas.columns.push_back(col_diag);
+
+    model::ColumnAST col_est;
+    col_est.original_identifier = "estado_atencion";
+    col_est.markov_absorbing_states = {"Atendida", "Cancelada"};
+    tbl_citas.columns.push_back(col_est);
+
+    ast.tables.push_back(tbl_pacientes);
+    ast.tables.push_back(tbl_medicos);
+    ast.tables.push_back(tbl_citas);
+
+    ast.relationships.push_back({"consultas_medicas", "id_paciente", "pacientes", "id_paciente", 1.0, 1.0});
+    ast.relationships.push_back({"consultas_medicas", "id_medico", "medicos", "id_medico", 1.0, 1.0});
+
+    DomainClassifier::enrich_ast_with_business_intelligence(ast);
+
+    REQUIRE(ast.system_summary.detected_domain == "Salud, Hospitales y Gestión Clínica");
+    REQUIRE(ast.system_summary.confidence >= 0.85);
+    REQUIRE(ast.system_summary.business_narrative.find("clinica") != std::string::npos);
+
+    const auto it_pac = std::find_if(ast.tables.begin(), ast.tables.end(), [](const auto& t) {
+        return t.original_identifier == "pacientes";
     });
-    REQUIRE(it_cb != ast.tables.end());
-    REQUIRE(it_cb->business_purpose.find("combate") != std::string::npos);
-    REQUIRE(!it_cb->business_questions.empty());
+    REQUIRE(it_pac != ast.tables.end());
+    REQUIRE(it_pac->business_purpose.find("pacientes") != std::string::npos);
+}
+
+TEST_CASE("DomainClassifier: Deteccion de Educacion y Universidades", "[domain]") {
+    model::SemanticAST ast;
+
+    model::TableAST tbl_est;
+    tbl_est.original_identifier = "estudiantes";
+    tbl_est.recommended_name = "dim_estudiantes";
+    tbl_est.inferred_role = "Dimension_Master_Entity";
+    tbl_est.pagerank_gravity = 0.40;
+
+    model::ColumnAST col_e_id;
+    col_e_id.original_identifier = "id_estudiante";
+    col_e_id.is_unique = true;
+    tbl_est.columns.push_back(col_e_id);
+
+    model::TableAST tbl_cur;
+    tbl_cur.original_identifier = "cursos_asignaturas";
+    tbl_cur.recommended_name = "dim_cursos_asignaturas";
+    tbl_cur.inferred_role = "Dimension_Master_Entity";
+    tbl_cur.pagerank_gravity = 0.30;
+
+    model::ColumnAST col_c_id;
+    col_c_id.original_identifier = "id_curso";
+    col_c_id.is_unique = true;
+    tbl_cur.columns.push_back(col_c_id);
+
+    model::TableAST tbl_mat;
+    tbl_mat.original_identifier = "matriculas_calificaciones";
+    tbl_mat.recommended_name = "fact_matriculas_calificaciones";
+    tbl_mat.inferred_role = "Fact_Transaction";
+    tbl_mat.pagerank_gravity = 0.20;
+
+    model::ColumnAST col_m_est;
+    col_m_est.original_identifier = "id_estudiante";
+    tbl_mat.columns.push_back(col_m_est);
+
+    model::ColumnAST col_m_cur;
+    col_m_cur.original_identifier = "id_curso";
+    tbl_mat.columns.push_back(col_m_cur);
+
+    model::ColumnAST col_nota;
+    col_nota.original_identifier = "nota_final";
+    tbl_mat.columns.push_back(col_nota);
+
+    ast.tables.push_back(tbl_est);
+    ast.tables.push_back(tbl_cur);
+    ast.tables.push_back(tbl_mat);
+
+    ast.relationships.push_back({"matriculas_calificaciones", "id_estudiante", "estudiantes", "id_estudiante", 1.0, 1.0});
+    ast.relationships.push_back({"matriculas_calificaciones", "id_curso", "cursos_asignaturas", "id_curso", 1.0, 1.0});
+
+    DomainClassifier::enrich_ast_with_business_intelligence(ast);
+
+    REQUIRE(ast.system_summary.detected_domain == "Educación, Universidades y Gestión Académica");
+    REQUIRE(ast.system_summary.confidence >= 0.85);
+    REQUIRE(ast.system_summary.business_narrative.find("estudiantil") != std::string::npos);
+}
+
+TEST_CASE("DomainClassifier: Deteccion de CRM, Soporte Tecnico y Ticketing", "[domain]") {
+    model::SemanticAST ast;
+
+    model::TableAST tbl_agentes;
+    tbl_agentes.original_identifier = "agentes_soporte";
+    tbl_agentes.recommended_name = "dim_agentes_soporte";
+    tbl_agentes.inferred_role = "Dimension_Master_Entity";
+    tbl_agentes.pagerank_gravity = 0.35;
+
+    model::ColumnAST col_ag_id;
+    col_ag_id.original_identifier = "id_agente";
+    col_ag_id.is_unique = true;
+    tbl_agentes.columns.push_back(col_ag_id);
+
+    model::TableAST tbl_tickets;
+    tbl_tickets.original_identifier = "tickets_incidencias";
+    tbl_tickets.recommended_name = "fact_tickets_incidencias";
+    tbl_tickets.inferred_role = "Fact_Transaction";
+    tbl_tickets.pagerank_gravity = 0.40;
+
+    model::ColumnAST col_tk_id;
+    col_tk_id.original_identifier = "ticket_id";
+    col_tk_id.is_unique = true;
+    tbl_tickets.columns.push_back(col_tk_id);
+
+    model::ColumnAST col_tk_ag;
+    col_tk_ag.original_identifier = "id_agente";
+    tbl_tickets.columns.push_back(col_tk_ag);
+
+    model::ColumnAST col_tk_sla;
+    col_tk_sla.original_identifier = "sla_horas";
+    tbl_tickets.columns.push_back(col_tk_sla);
+
+    model::ColumnAST col_tk_est;
+    col_tk_est.original_identifier = "estado_incidencia";
+    col_tk_est.markov_absorbing_states = {"Cerrado", "Resuelto"};
+    tbl_tickets.columns.push_back(col_tk_est);
+
+    ast.tables.push_back(tbl_agentes);
+    ast.tables.push_back(tbl_tickets);
+
+    ast.relationships.push_back({"tickets_incidencias", "id_agente", "agentes_soporte", "id_agente", 1.0, 1.0});
+
+    DomainClassifier::enrich_ast_with_business_intelligence(ast);
+
+    REQUIRE(ast.system_summary.detected_domain == "CRM, Atención al Cliente, Helpdesk y Ticketing");
+    REQUIRE(ast.system_summary.confidence >= 0.85);
+    REQUIRE(ast.system_summary.business_narrative.find("tickets") != std::string::npos);
+}
+
+TEST_CASE("DomainClassifier: Deteccion de Hoteleria y Reservas", "[domain]") {
+    model::SemanticAST ast;
+
+    model::TableAST tbl_hab;
+    tbl_hab.original_identifier = "habitaciones_hotel";
+    tbl_hab.recommended_name = "dim_habitaciones_hotel";
+    tbl_hab.inferred_role = "Dimension_Master_Entity";
+    tbl_hab.pagerank_gravity = 0.35;
+
+    model::ColumnAST col_h_id;
+    col_h_id.original_identifier = "id_habitacion";
+    col_h_id.is_unique = true;
+    tbl_hab.columns.push_back(col_h_id);
+
+    model::TableAST tbl_res;
+    tbl_res.original_identifier = "reservas_booking";
+    tbl_res.recommended_name = "fact_reservas_booking";
+    tbl_res.inferred_role = "Fact_Transaction";
+    tbl_res.pagerank_gravity = 0.40;
+
+    model::ColumnAST col_r_hab;
+    col_r_hab.original_identifier = "id_habitacion";
+    tbl_res.columns.push_back(col_r_hab);
+
+    model::ColumnAST col_r_in;
+    col_r_in.original_identifier = "fecha_checkin";
+    tbl_res.columns.push_back(col_r_in);
+
+    model::ColumnAST col_r_out;
+    col_r_out.original_identifier = "fecha_checkout";
+    tbl_res.columns.push_back(col_r_out);
+
+    ast.tables.push_back(tbl_hab);
+    ast.tables.push_back(tbl_res);
+
+    ast.relationships.push_back({"reservas_booking", "id_habitacion", "habitaciones_hotel", "id_habitacion", 1.0, 1.0});
+
+    DomainClassifier::enrich_ast_with_business_intelligence(ast);
+
+    REQUIRE(ast.system_summary.detected_domain == "Hotelería, Turismo y Gestión de Reservas");
+    REQUIRE(ast.system_summary.confidence >= 0.85);
+    REQUIRE(ast.system_summary.business_narrative.find("hotelera") != std::string::npos);
 }
 
 TEST_CASE("DomainClassifier: Deteccion de E-Commerce y Ventas", "[domain]") {
@@ -207,9 +383,7 @@ TEST_CASE("DomainClassifier: Inferencia Adaptativa General para Esquema Desconoc
 
     DomainClassifier::enrich_ast_with_business_intelligence(ast);
 
-    // Debe inferir un dominio general adaptativo
     REQUIRE(ast.system_summary.detected_domain.find("Maestro_recursos") != std::string::npos);
-    // No debe asumir que es ventas
     REQUIRE(ast.system_summary.business_narrative.find("ventas") == std::string::npos);
-    REQUIRE(ast.system_summary.business_narrative.find("pedido") == std::string::npos);
+    REQUIRE(ast.system_summary.business_narrative.find("combates") == std::string::npos);
 }

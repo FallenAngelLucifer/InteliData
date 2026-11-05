@@ -9,16 +9,24 @@
 namespace intelidata::pipeline {
 
 enum class DomainType {
-    SportsCombatGaming,      // Deportes de Combate, Torneos y Salas en Línea
-    EcommerceSales,          // Comercio Electrónico, Facturación y Ventas
-    BankingFinance,          // Banca, Finanzas y Contabilidad
-    HealthcareClinical,      // Salud, Gestión Clínica y Expedientes Médicos
-    EducationAcademic,       // Educación, Universidad y Gestión Académica
-    LogisticsFleet,          // Logística, Flota y Distribución Física
-    SocialCommunity,         // Redes Sociales, Mensajería y Comunidad
-    HumanResources,          // Gestión de Personal y Recursos Humanos
-    TelemetryIoT,            // Telecomunicaciones, Redes y Telemetría IoT
-    AdaptiveGeneral          // Inferencia Adaptativa para Dominios No Catalogados
+    EcommerceSales,          // 1. Comercio Electrónico, Facturación y Ventas
+    BankingFinance,          // 2. Banca, Finanzas y Contabilidad
+    SportsTournament,        // 3. Deportes y Torneos Competitivos
+    GamingMatchmaking,       // 4. Videojuegos, Gaming y Plataformas Multijugador
+    HealthcareClinical,      // 5. Salud, Hospitales y Expedientes Médicos
+    EducationAcademic,       // 6. Educación, Universidades y Gestión Académica
+    LogisticsFleet,          // 7. Logística, Distribución, Almacenes y Flotas
+    HumanResources,          // 8. Recursos Humanos, Gestión de Personal y Nómina
+    SocialCommunity,         // 9. Redes Sociales, Mensajería y Comunidades
+    HospitalityTourism,      // 10. Hotelería, Turismo y Reservas
+    RealEstate,              // 11. Bienes Raíces, Inmobiliaria y Gestión de Propiedades
+    ManufacturingSupply,     // 12. Manufactura, Producción Industrial y Calidad
+    TelemetryIoT,            // 13. Telecomunicaciones, Redes y Telemetría IoT
+    PublicSectorGov,         // 14. Sector Público, Trámites Gubernamentales y Ciudadanía
+    MediaStreaming,          // 15. Streaming, Medios Audiovisuales y Contenido Digital
+    CustomerSupportCRM,      // 16. CRM, Soporte Técnico y Ticketing
+    LegalJudicial,           // 17. Gestión Legal, Jurídica y Casos Procesales
+    AdaptiveGeneral          // 18. Inferencia Adaptativa Inductiva (Fallback General)
 };
 
 struct DomainClassificationResult {
@@ -29,6 +37,7 @@ struct DomainClassificationResult {
     std::string primary_focus;
     std::string narrative;
     std::vector<std::string> executive_insights;
+    std::vector<std::string> industry_tags;
 };
 
 class DomainClassifier {
