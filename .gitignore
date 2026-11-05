@@ -1,0 +1,27 @@
+# Build directories
+build/
+bin/
+lib/
+out/
+
+# CMake artifacts
+CMakeUserPresets.json
+compile_commands.json
+.cmake/
+
+# IDE and editor settings
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS and GUI artifacts
+.DS_Store
+Thumbs.db
+imgui.ini
+
+# Generated samples and analysis outputs
+samples/ecommerce_obfuscated.db
+samples/ecommerce_ast.json
+samples/ecommerce_views.sql
+samples/ecommerce_dictionary.md

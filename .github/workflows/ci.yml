@@ -1,0 +1,90 @@
+name: InteliData CI (Cross-Platform)
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.os }} - ${{ matrix.compiler }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            compiler: gcc
+            cc: gcc
+            cxx: g++
+          - os: ubuntu-latest
+            compiler: clang
+            cc: clang
+            cxx: clang++
+          - os: windows-latest
+            compiler: msvc
+            cc: cl
+            cxx: cl
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libx11-dev xvfb
+
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DINTELIDATA_BUILD_TESTS=ON \
+            -DINTELIDATA_BUILD_GUI=ON
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          cmake -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DINTELIDATA_BUILD_TESTS=ON `
+            -DINTELIDATA_BUILD_GUI=ON
+
+      - name: Build
+        run: cmake --build build --config Release -j
+
+      - name: Run Catch2 Unit Tests (Linux)
+        if: runner.os == 'Linux'
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Run Catch2 Unit Tests (Windows)
+        if: runner.os == 'Windows'
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Test End-to-End CLI Pipeline (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          python3 samples/generate_sample_data.py
+          ./build/intelidata-cli --input samples/ecommerce_obfuscated.db --output-json ast.json --output-sql views.sql --output-docs dict.md
+
+      - name: Test End-to-End CLI Pipeline (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python samples/generate_sample_data.py
+          ./build/Release/intelidata-cli.exe --input samples/ecommerce_obfuscated.db --output-json ast.json --output-sql views.sql --output-docs dict.md
+
+      - name: Test GUI Frame Loop (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run ./build/intelidata-gui --input samples/ecommerce_obfuscated.db --test
+
+      - name: Test GUI Frame Loop (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          ./build/Release/intelidata-gui.exe --input samples/ecommerce_obfuscated.db --test
