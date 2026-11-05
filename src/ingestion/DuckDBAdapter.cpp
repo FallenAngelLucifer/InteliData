@@ -206,6 +206,36 @@ bool DuckDBAdapter::attach_sqlite(const std::string& sqlite_path, const std::str
     return execute("USE " + alias + ";");
 }
 
+TablePreviewData DuckDBAdapter::fetch_table_preview(std::string_view table_name, Size max_rows) {
+    TablePreviewData preview{std::string(table_name), {}, {}};
+    if (!impl_ || !impl_->valid) return preview;
+
+    const std::string q = "SELECT * FROM \"" + std::string(table_name) + "\" LIMIT " + std::to_string(max_rows) + ";";
+    duckdb_result result;
+    const duckdb_state state = duckdb_query(impl_->conn, q.c_str(), &result);
+
+    if (state == DuckDBSuccess) {
+        const idx_t cols = duckdb_column_count(&result);
+        const idx_t rows = duckdb_row_count(&result);
+        preview.column_names.reserve(cols);
+        for (idx_t c = 0; c < cols; ++c) {
+            const char* name = duckdb_column_name(&result, c);
+            preview.column_names.emplace_back(name ? name : "");
+        }
+        preview.rows.resize(rows);
+        for (idx_t r = 0; r < rows; ++r) {
+            preview.rows[r].resize(cols);
+            for (idx_t c = 0; c < cols; ++c) {
+                char* val = duckdb_value_varchar(&result, c, r);
+                preview.rows[r][c] = (val ? val : "NULL");
+                if (val) duckdb_free(val);
+            }
+        }
+    }
+    duckdb_destroy_result(&result);
+    return preview;
+}
+
 } // namespace intelidata::ingestion
 
 #else
@@ -224,6 +254,7 @@ bool DuckDBAdapter::execute(const std::string&) { return false; }
 std::vector<std::string> DuckDBAdapter::list_tables() { return {}; }
 TableSchema DuckDBAdapter::get_table_schema(std::string_view table_name) { return {std::string(table_name), {}}; }
 std::vector<std::string> DuckDBAdapter::sample_column(std::string_view, std::string_view, Size) { return {}; }
+TablePreviewData DuckDBAdapter::fetch_table_preview(std::string_view table_name, Size) { return {std::string(table_name), {}, {}}; }
 bool DuckDBAdapter::load_parquet(const std::string&, const std::string&) { return false; }
 bool DuckDBAdapter::load_csv(const std::string&, const std::string&) { return false; }
 bool DuckDBAdapter::attach_sqlite(const std::string&, const std::string&) { return false; }

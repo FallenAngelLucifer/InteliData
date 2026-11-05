@@ -28,6 +28,9 @@ class Engine {
 public:
     explicit Engine(EngineOptions options = EngineOptions{});
 
+    void set_options(EngineOptions options) noexcept { options_ = options; }
+    [[nodiscard]] const EngineOptions& options() const noexcept { return options_; }
+
     // Ejecuta el análisis integral sobre cualquier fuente de datos
     [[nodiscard]] model::SemanticAST analyze(
         ingestion::DataAdapter& adapter,

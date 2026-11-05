@@ -35,6 +35,9 @@ public:
         std::string_view table_name,
         std::string_view column_name,
         Size max_samples = 5000) override;
+    [[nodiscard]] TablePreviewData fetch_table_preview(
+        std::string_view table_name,
+        Size max_rows = 50) override;
 
     // Carga de formatos analíticos
     bool load_parquet(const std::string& table_name, const std::string& parquet_path);
