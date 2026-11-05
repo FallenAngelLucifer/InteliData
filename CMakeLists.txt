@@ -39,6 +39,7 @@ set(INTELIDATA_CORE_HEADERS
     include/intelidata/ingestion/DuckDBAdapter.hpp
     include/intelidata/pipeline/Engine.hpp
     include/intelidata/pipeline/DDLGenerator.hpp
+    include/intelidata/pipeline/DomainClassifier.hpp
 )
 
 set(INTELIDATA_CORE_SOURCES
@@ -55,6 +56,7 @@ set(INTELIDATA_CORE_SOURCES
     src/ingestion/DuckDBAdapter.cpp
     src/pipeline/Engine.cpp
     src/pipeline/DDLGenerator.cpp
+    src/pipeline/DomainClassifier.cpp
 )
 
 add_library(intelidata_core STATIC

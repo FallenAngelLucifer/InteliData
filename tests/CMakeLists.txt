@@ -15,6 +15,7 @@ add_executable(intelidata_tests
     test_svd.cpp
     test_ast.cpp
     test_engine.cpp
+    test_domain_classifier.cpp
 )
 
 target_link_libraries(intelidata_tests
