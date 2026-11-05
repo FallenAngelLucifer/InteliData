@@ -1,0 +1,52 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compilar Proyecto (CMake)",
+            "type": "shell",
+            "command": "cmake --build ${workspaceFolder}/build -j$(nproc)",
+            "windows": {
+                "command": "cmake --build ${workspaceFolder}/build --config Release -j"
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "Configurar CMake (Release)",
+            "type": "shell",
+            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Release -DINTELIDATA_BUILD_GUI=ON -DINTELIDATA_BUILD_TESTS=ON",
+            "problemMatcher": []
+        },
+        {
+            "label": "Configurar CMake (Debug con Símbolos)",
+            "type": "shell",
+            "command": "cmake -B ${workspaceFolder}/build -DCMAKE_BUILD_TYPE=Debug -DINTELIDATA_BUILD_GUI=ON -DINTELIDATA_BUILD_TESTS=ON",
+            "problemMatcher": []
+        },
+        {
+            "label": "Generar Datos de Prueba Sintéticos",
+            "type": "shell",
+            "command": "python3 ${workspaceFolder}/samples/generate_sample_data.py",
+            "windows": {
+                "command": "python ${workspaceFolder}/samples/generate_sample_data.py"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Ejecutar Suite de Pruebas (ctest)",
+            "type": "shell",
+            "command": "ctest --test-dir ${workspaceFolder}/build --output-on-failure",
+            "windows": {
+                "command": "ctest --test-dir ${workspaceFolder}/build -C Release --output-on-failure"
+            },
+            "group": {
+                "kind": "test",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        }
+    ]
+}

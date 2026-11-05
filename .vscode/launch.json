@@ -1,0 +1,106 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "InteliData: Ejecutar GUI (F5)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/intelidata-gui",
+            "windows": {
+                "program": "${workspaceFolder}/build/Release/intelidata-gui.exe"
+            },
+            "args": [
+                "--input",
+                "${workspaceFolder}/samples/ecommerce_obfuscated.db"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "windows": {
+                "MIMode": "gdb",
+                "miDebuggerPath": "gdb.exe"
+            },
+            "setupCommands": [
+                {
+                    "description": "Habilitar formato avanzado para GDB",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Compilar Proyecto (CMake)"
+        },
+        {
+            "name": "InteliData: Ejecutar GUI [Native Debug GDB]",
+            "type": "gdb",
+            "request": "launch",
+            "target": "${workspaceFolder}/build/intelidata-gui",
+            "windows": {
+                "target": "${workspaceFolder}/build/Release/intelidata-gui.exe"
+            },
+            "arguments": "--input ${workspaceFolder}/samples/ecommerce_obfuscated.db",
+            "cwd": "${workspaceFolder}",
+            "gdbpath": "/usr/bin/gdb",
+            "preLaunchTask": "Compilar Proyecto (CMake)"
+        },
+        {
+            "name": "InteliData: Ejecutar CLI (Análisis Completo)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/intelidata-cli",
+            "windows": {
+                "program": "${workspaceFolder}/build/Release/intelidata-cli.exe"
+            },
+            "args": [
+                "--input",
+                "${workspaceFolder}/samples/ecommerce_obfuscated.db",
+                "--output-json",
+                "${workspaceFolder}/samples/ecommerce_ast.json",
+                "--output-sql",
+                "${workspaceFolder}/samples/ecommerce_views.sql",
+                "--output-docs",
+                "${workspaceFolder}/samples/ecommerce_dictionary.md"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Habilitar formato avanzado para GDB",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Compilar Proyecto (CMake)"
+        },
+        {
+            "name": "InteliData: Depurar Suite de Pruebas (Catch2)",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/intelidata_tests",
+            "windows": {
+                "program": "${workspaceFolder}/build/Release/intelidata_tests.exe"
+            },
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "/usr/bin/gdb",
+            "setupCommands": [
+                {
+                    "description": "Habilitar formato avanzado para GDB",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ],
+            "preLaunchTask": "Compilar Proyecto (CMake)"
+        }
+    ]
+}

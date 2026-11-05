@@ -10,7 +10,10 @@ compile_commands.json
 .cmake/
 
 # IDE and editor settings
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
 .idea/
 *.swp
 *~
