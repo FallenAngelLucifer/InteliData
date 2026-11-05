@@ -63,7 +63,7 @@ void setup_default_dock_layout(ImGuiID dockspace_id, const ImVec2& size) {
     // Acoplar ventanas fijas
     ImGui::DockBuilderDockWindow("Grafo Ontologico (Fisica 2D)", dock_main);
     ImGui::DockBuilderDockWindow("Previsualizacion de Datos Crudos", dock_bottom);
-    ImGui::DockBuilderDockWindow("Inspector Estadistico (ImPlot)", dock_right);
+    ImGui::DockBuilderDockWindow("Inteligencia y Diagnostico de Negocio", dock_right);
     ImGui::DockBuilderDockWindow("Centro de Exportacion DDL / Markdown / JSON", dock_right_bottom);
 
     ImGui::DockBuilderFinish(dockspace_id);
@@ -786,8 +786,13 @@ int main(int argc, char* argv[]) {
                 update_preview_for_table(current_selected_table);
             }
 
-            // 3. Inspector Estadístico Avanzado (ImPlot Benford, Markov, PIND)
-            inspector.render_inspector("Inspector Estadistico (ImPlot)", current_ast, canvas.selected_node());
+            // 3. Inteligencia y Diagnóstico de Negocio
+            inspector.render_inspector("Inteligencia y Diagnostico de Negocio", current_ast, canvas.selected_node());
+            if (inspector.has_table_selection_request()) {
+                current_selected_table = inspector.consume_table_selection();
+                canvas.select_node_by_name(current_selected_table);
+                update_preview_for_table(current_selected_table);
+            }
 
             // 4. Centro de Exportación DDL / Markdown / JSON
             inspector.render_ddl_viewer("Centro de Exportacion DDL / Markdown / JSON", current_ast);

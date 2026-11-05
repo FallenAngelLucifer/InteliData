@@ -18,6 +18,9 @@ nlohmann::json ColumnAST::to_json() const {
     if (!markov_absorbing_states.empty()) {
         j["markov_absorbing_states"] = markov_absorbing_states;
     }
+    if (!business_meaning.empty()) {
+        j["business_meaning"] = business_meaning;
+    }
     return j;
 }
 
@@ -33,6 +36,7 @@ ColumnAST ColumnAST::from_json(const nlohmann::json& j) {
     if (j.contains("markov_absorbing_states")) {
         col.markov_absorbing_states = j["markov_absorbing_states"].get<std::vector<std::string>>();
     }
+    col.business_meaning = j.value("business_meaning", "");
     return col;
 }
 
@@ -43,6 +47,13 @@ nlohmann::json TableAST::to_json() const {
     j["recommended_name"] = recommended_name;
     j["pagerank_gravity"] = pagerank_gravity;
     j["spectral_cluster"] = spectral_cluster;
+
+    if (!business_purpose.empty()) j["business_purpose"] = business_purpose;
+    if (!role_justification.empty()) j["role_justification"] = role_justification;
+    if (!business_questions.empty()) j["business_questions"] = business_questions;
+    if (!incoming_business_sources.empty()) j["incoming_business_sources"] = incoming_business_sources;
+    if (!outgoing_business_targets.empty()) j["outgoing_business_targets"] = outgoing_business_targets;
+    if (!quality_insights.empty()) j["quality_insights"] = quality_insights;
 
     nlohmann::json cols_arr = nlohmann::json::array();
     for (const auto& col : columns) {
@@ -59,6 +70,22 @@ TableAST TableAST::from_json(const nlohmann::json& j) {
     tbl.recommended_name = j.value("recommended_name", "");
     tbl.pagerank_gravity = j.value("pagerank_gravity", 0.0);
     tbl.spectral_cluster = j.value("spectral_cluster", 0);
+
+    tbl.business_purpose = j.value("business_purpose", "");
+    tbl.role_justification = j.value("role_justification", "");
+    if (j.contains("business_questions")) {
+        tbl.business_questions = j["business_questions"].get<std::vector<std::string>>();
+    }
+    if (j.contains("incoming_business_sources")) {
+        tbl.incoming_business_sources = j["incoming_business_sources"].get<std::vector<std::string>>();
+    }
+    if (j.contains("outgoing_business_targets")) {
+        tbl.outgoing_business_targets = j["outgoing_business_targets"].get<std::vector<std::string>>();
+    }
+    if (j.contains("quality_insights")) {
+        tbl.quality_insights = j["quality_insights"].get<std::vector<std::string>>();
+    }
+
     if (j.contains("columns") && j["columns"].is_array()) {
         for (const auto& c_json : j["columns"]) {
             tbl.columns.push_back(ColumnAST::from_json(c_json));
@@ -89,6 +116,26 @@ RelationshipAST RelationshipAST::from_json(const nlohmann::json& j) {
     return rel;
 }
 
+nlohmann::json FunctionalSubdomainAST::to_json() const {
+    nlohmann::json j;
+    j["cluster_id"] = cluster_id;
+    j["name"] = name;
+    j["description"] = description;
+    j["table_names"] = table_names;
+    return j;
+}
+
+FunctionalSubdomainAST FunctionalSubdomainAST::from_json(const nlohmann::json& j) {
+    FunctionalSubdomainAST sub;
+    sub.cluster_id = j.value("cluster_id", 0);
+    sub.name = j.value("name", "");
+    sub.description = j.value("description", "");
+    if (j.contains("table_names")) {
+        sub.table_names = j["table_names"].get<std::vector<std::string>>();
+    }
+    return sub;
+}
+
 nlohmann::json SystemSummaryAST::to_json() const {
     nlohmann::json j;
     j["detected_domain"] = detected_domain;
@@ -96,6 +143,17 @@ nlohmann::json SystemSummaryAST::to_json() const {
     j["fiedler_connectivity"] = fiedler_connectivity;
     j["total_tables"] = total_tables;
     j["total_relationships_inferred"] = total_relationships_inferred;
+
+    if (!architecture_pattern.empty()) j["architecture_pattern"] = architecture_pattern;
+    if (!business_narrative.empty()) j["business_narrative"] = business_narrative;
+    if (!executive_insights.empty()) j["executive_insights"] = executive_insights;
+
+    nlohmann::json sub_arr = nlohmann::json::array();
+    for (const auto& s : subdomains) {
+        sub_arr.push_back(s.to_json());
+    }
+    j["subdomains"] = sub_arr;
+
     return j;
 }
 
@@ -106,6 +164,17 @@ SystemSummaryAST SystemSummaryAST::from_json(const nlohmann::json& j) {
     sum.fiedler_connectivity = j.value("fiedler_connectivity", 0.0);
     sum.total_tables = j.value("total_tables", static_cast<Size>(0));
     sum.total_relationships_inferred = j.value("total_relationships_inferred", static_cast<Size>(0));
+
+    sum.architecture_pattern = j.value("architecture_pattern", "");
+    sum.business_narrative = j.value("business_narrative", "");
+    if (j.contains("executive_insights")) {
+        sum.executive_insights = j["executive_insights"].get<std::vector<std::string>>();
+    }
+    if (j.contains("subdomains") && j["subdomains"].is_array()) {
+        for (const auto& s_json : j["subdomains"]) {
+            sum.subdomains.push_back(FunctionalSubdomainAST::from_json(s_json));
+        }
+    }
     return sum;
 }
 

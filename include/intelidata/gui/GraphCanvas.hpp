@@ -30,6 +30,7 @@ struct NodeUI {
     Float64 pagerank_gravity{0.0};
     Int32 spectral_cluster{0};
     Size column_count{0};
+    std::string business_purpose;
     bool is_dragging{false};
     bool is_selected{false};
 };

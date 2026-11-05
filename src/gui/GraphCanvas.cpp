@@ -32,6 +32,7 @@ void GraphCanvas::load_from_ast(const model::SemanticAST& ast) {
         node.pagerank_gravity = tbl.pagerank_gravity;
         node.spectral_cluster = tbl.spectral_cluster;
         node.column_count = tbl.columns.size();
+        node.business_purpose = tbl.business_purpose;
 
         // Posicionamiento inicial radial con perturbación estocástica
         const Float32 angle = static_cast<Float32>(i) * (2.0f * 3.14159265f / static_cast<Float32>(std::max<Size>(1, total)));
@@ -454,9 +455,15 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
             ImGui::Text("Rol Inferido: %s", node.inferred_role.c_str());
             ImGui::Text("Columnas: %zu", node.column_count);
             ImGui::Text("Gravedad PageRank: %.4f", node.pagerank_gravity);
-            ImGui::Text("Cluster Espectral: %d", node.spectral_cluster);
+            ImGui::Text("Cluster Espectral: C%d", node.spectral_cluster);
+            if (!node.business_purpose.empty()) {
+                ImGui::Separator();
+                ImGui::PushTextWrapPos(ImGui::GetFontSize() * 25.0f);
+                ImGui::TextColored(ImVec4(0.85f, 0.85f, 0.90f, 1.0f), "%s", node.business_purpose.c_str());
+                ImGui::PopTextWrapPos();
+            }
             ImGui::Separator();
-            ImGui::TextDisabled("Clic izquierdo para seleccionar e inspeccionar.");
+            ImGui::TextDisabled("Clic izquierdo para abrir Ficha de Negocio y Metricas.");
             ImGui::EndTooltip();
         }
     }

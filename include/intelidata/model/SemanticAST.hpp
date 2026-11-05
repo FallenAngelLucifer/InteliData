@@ -17,6 +17,7 @@ struct ColumnAST {
     Float64 benford_p_value{0.0};
     std::string distribution;
     std::vector<std::string> markov_absorbing_states;
+    std::string business_meaning;
 
     [[nodiscard]] nlohmann::json to_json() const;
     static ColumnAST from_json(const nlohmann::json& j);
@@ -29,6 +30,14 @@ struct TableAST {
     Float64 pagerank_gravity{0.0};
     Int32 spectral_cluster{0};
     std::vector<ColumnAST> columns;
+
+    // Interpretación semántica y narrativa de negocio
+    std::string business_purpose;
+    std::string role_justification;
+    std::vector<std::string> business_questions;
+    std::vector<std::string> incoming_business_sources;
+    std::vector<std::string> outgoing_business_targets;
+    std::vector<std::string> quality_insights;
 
     [[nodiscard]] nlohmann::json to_json() const;
     static TableAST from_json(const nlohmann::json& j);
@@ -46,12 +55,28 @@ struct RelationshipAST {
     static RelationshipAST from_json(const nlohmann::json& j);
 };
 
+struct FunctionalSubdomainAST {
+    Int32 cluster_id{0};
+    std::string name;
+    std::string description;
+    std::vector<std::string> table_names;
+
+    [[nodiscard]] nlohmann::json to_json() const;
+    static FunctionalSubdomainAST from_json(const nlohmann::json& j);
+};
+
 struct SystemSummaryAST {
     std::string detected_domain{"Desconocido"};
     Float64 confidence{0.0};
     Float64 fiedler_connectivity{0.0};
     Size total_tables{0};
     Size total_relationships_inferred{0};
+
+    // Diagnóstico ejecutivo y arquitectura del sistema
+    std::string architecture_pattern;
+    std::string business_narrative;
+    std::vector<FunctionalSubdomainAST> subdomains;
+    std::vector<std::string> executive_insights;
 
     [[nodiscard]] nlohmann::json to_json() const;
     static SystemSummaryAST from_json(const nlohmann::json& j);
