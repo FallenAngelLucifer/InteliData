@@ -58,6 +58,23 @@ Los binarios ejecutables se generarán en:
 
 ---
 
+### 1.3. En Code OSS / VS Code (Ejecución Directa con F5)
+
+El repositorio incluye la configuración de desarrollo en [`.vscode/`](file:///home/lucifer/proyectos/InteliData/.vscode/) para depurar y ejecutar directamente con la tecla **F5**:
+
+1. **Abrir la carpeta del proyecto en Code OSS:**
+   ```bash
+   code /home/lucifer/proyectos/InteliData
+   ```
+2. **Presionar `F5`:**
+   - Se activará automáticamente la tarea previa `Compilar Proyecto (CMake)` que compila incrementalmente cualquier cambio pendiente.
+   - Se lanzará la interfaz gráfica **`intelidata-gui`** cargando por defecto el dataset de demostración `samples/ecommerce_obfuscated.db`.
+3. **Opciones adicionales en el menú "Ejecutar y Depurar" (`Ctrl+Shift+D`):**
+   - **`InteliData: Ejecutar GUI (F5)`:** Interfaz gráfica interactiva con el dataset ofuscado.
+   - **`InteliData: Ejecutar GUI [Native Debug GDB]`:** Perfil alternativo para la extensión Native Debug.
+   - **`InteliData: Ejecutar CLI (Análisis Completo)`:** Ejecuta el binario headless generando el JSON, DDL SQL y Markdown.
+   - **`InteliData: Depurar Suite de Pruebas (Catch2)`:** Ejecuta los tests unitarios bajo el depurador GDB con puntos de interrupción interactivos.
+
 ## 2. Guía de Uso del CLI (`intelidata-cli`)
 
 El binario de línea de comandos `intelidata-cli` está diseñado para pipelines de datos, integración continua (CI/CD) y entornos de servidor sin entorno gráfico (headless).
