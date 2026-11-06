@@ -91,6 +91,7 @@ void DataHubView::refresh_file_list() {
 
 void DataHubView::render(bool* p_open) {
     ImGui::SetNextWindowSize(ImVec2(780, 560), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(380.0f, 320.0f), ImVec2(FLT_MAX, FLT_MAX));
     if (!ImGui::Begin("Centro de Ingesta y Conexion de Datos", p_open)) {
         ImGui::End();
         return;
@@ -198,12 +199,20 @@ void DataHubView::render_file_explorer() {
 
     ImGui::Separator();
     ImGui::Text("Ruta del archivo seleccionado:");
-    ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 170);
-    ImGui::InputText("##selpath", path_input_buffer_, sizeof(path_input_buffer_));
-    ImGui::SameLine();
+    const float btn_w = 160.0f;
+    const float avail_w = ImGui::GetContentRegionAvail().x;
+    if (avail_w > btn_w + 120.0f) {
+        ImGui::SetNextItemWidth(avail_w - btn_w - ImGui::GetStyle().ItemSpacing.x);
+        ImGui::InputText("##selpath", path_input_buffer_, sizeof(path_input_buffer_));
+        ImGui::SameLine();
+    } else {
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputText("##selpath", path_input_buffer_, sizeof(path_input_buffer_));
+        ImGui::Spacing();
+    }
 
     ImGui::BeginDisabled(std::strlen(path_input_buffer_) == 0);
-    if (ImGui::Button("Cargar y Analizar", ImVec2(160, 0))) {
+    if (ImGui::Button("Cargar y Analizar", ImVec2(btn_w, 0))) {
         pending_request_.type = IngestionSourceType::FilePath;
         pending_request_.path = path_input_buffer_;
         pending_request_.options = options_;

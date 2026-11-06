@@ -23,6 +23,17 @@ void render_badge(const char* text, const ImVec4& bg_color, const ImVec4& text_c
     ImGui::PopStyleColor(4);
 }
 
+void render_responsive_badge(const char* text, const ImVec4& bg_color, const ImVec4& text_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), bool try_same_line = true) {
+    const float badge_w = ImGui::CalcTextSize(text).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+
+    if (try_same_line && avail >= badge_w + spacing) {
+        ImGui::SameLine();
+    }
+    render_badge(text, bg_color, text_color);
+}
+
 ImVec4 role_color(const std::string& role) {
     if (role == "Fact_Transaction" || role == "FACT_TABLE") return ImVec4(0.92f, 0.45f, 0.20f, 1.0f);        // Ámbar / Naranja
     if (role == "Dimension_Master_Entity" || role == "DIMENSION_TABLE") return ImVec4(0.18f, 0.75f, 0.45f, 1.0f);   // Verde Esmeralda
@@ -50,13 +61,20 @@ void InspectorView::render_inspector(const char* title, const model::SemanticAST
         }
     }
 
-    // Barra de conmutación superior: Diagnóstico General vs Ficha de Entidad
+    // Barra de conmutación superior: Diagnóstico General vs Ficha de Entidad (adaptativo)
     if (matched_table) {
+        const float btn1_w = ImGui::CalcTextSize("  [Diagnostico Global del Negocio]  ").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+        const std::string btn2_text = "  [Ficha de Entidad: " + matched_table->recommended_name + "]  ";
+        const float btn2_w = ImGui::CalcTextSize(btn2_text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+        const float avail_w = ImGui::GetContentRegionAvail().x;
+
         if (ImGui::Button("  [Diagnostico Global del Negocio]  ")) {
             inspector_tab_ = 1;
         }
-        ImGui::SameLine();
-        if (ImGui::Button(("  [Ficha de Entidad: " + matched_table->recommended_name + "]  ").c_str())) {
+        if (avail_w >= btn1_w + btn2_w + ImGui::GetStyle().ItemSpacing.x) {
+            ImGui::SameLine();
+        }
+        if (ImGui::Button(btn2_text.c_str())) {
             inspector_tab_ = 0;
         }
         ImGui::Separator();
@@ -82,24 +100,21 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     ImGui::Spacing();
 
     std::string domain_badge_text = (ast.system_summary.domain_icon.empty() ? "" : ast.system_summary.domain_icon + " ") + ast.system_summary.detected_domain;
-    render_badge(domain_badge_text.c_str(), ImVec4(0.18f, 0.65f, 0.40f, 1.0f));
-    ImGui::SameLine();
+    render_responsive_badge(domain_badge_text.c_str(), ImVec4(0.18f, 0.65f, 0.40f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f), false);
 
     char conf_buf[32];
     std::snprintf(conf_buf, sizeof(conf_buf), "Confianza: %.1f%%", ast.system_summary.confidence * 100.0);
-    render_badge(conf_buf, ImVec4(0.20f, 0.50f, 0.80f, 1.0f));
+    render_responsive_badge(conf_buf, ImVec4(0.20f, 0.50f, 0.80f, 1.0f));
 
     if (!ast.system_summary.architecture_pattern.empty()) {
-        ImGui::SameLine();
-        render_badge(ast.system_summary.architecture_pattern.c_str(), ImVec4(0.60f, 0.35f, 0.85f, 1.0f));
+        render_responsive_badge(ast.system_summary.architecture_pattern.c_str(), ImVec4(0.60f, 0.35f, 0.85f, 1.0f));
     }
 
     if (!ast.system_summary.industry_tags.empty()) {
         ImGui::Spacing();
         ImGui::TextDisabled("Sectores Afines:");
         for (const auto& tag : ast.system_summary.industry_tags) {
-            ImGui::SameLine();
-            render_badge(("# " + tag).c_str(), ImVec4(0.20f, 0.32f, 0.45f, 1.0f));
+            render_responsive_badge(("# " + tag).c_str(), ImVec4(0.20f, 0.32f, 0.45f, 1.0f));
         }
     }
 
@@ -130,12 +145,9 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     if (!ast.system_summary.subdomains.empty()) {
         ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.60f, 1.0f), "SUBDOMINIOS Y MODULOS DE LA EMPRESA (Corte Espectral):");
         ImGui::TextDisabled("Agrupacion funcional derivada del Laplaciano normalizado y el vector de Fiedler:");
-        ImGui::Spacing();
-
         for (const auto& sub : ast.system_summary.subdomains) {
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.19f, 0.8f));
-            const float box_h = 75.0f + static_cast<float>(sub.table_names.size() > 6 ? 26 : 0);
-            ImGui::BeginChild(("Subdomain_" + std::to_string(sub.cluster_id)).c_str(), ImVec2(0, box_h), true);
+            ImGui::BeginChild(("Subdomain_" + std::to_string(sub.cluster_id)).c_str(), ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
 
             ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "* %s", sub.name.c_str());
             ImGui::SameLine();
@@ -147,14 +159,15 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
 
             ImGui::Spacing();
             ImGui::Text("Tablas del modulo:");
-            ImGui::SameLine();
             for (const auto& tbl_name : sub.table_names) {
+                const float btn_w = ImGui::CalcTextSize(tbl_name.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+                if (ImGui::GetContentRegionAvail().x >= btn_w + ImGui::GetStyle().ItemSpacing.x) {
+                    ImGui::SameLine();
+                }
                 if (ImGui::SmallButton(tbl_name.c_str())) {
                     requested_table_ = tbl_name;
                 }
-                ImGui::SameLine();
             }
-            ImGui::NewLine();
 
             ImGui::EndChild();
             ImGui::PopStyleColor();
@@ -515,7 +528,10 @@ void InspectorView::render_ddl_viewer(const char* title, const model::SemanticAS
                 toast_message_ = "¡Script SQL copiado al portapapeles!";
                 toast_timer_ = 3.0f;
             }
-            ImGui::SameLine();
+            const float save_sql_w = ImGui::CalcTextSize("Guardar schema_views.sql").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            if (ImGui::GetContentRegionAvail().x >= save_sql_w + ImGui::GetStyle().ItemSpacing.x) {
+                ImGui::SameLine();
+            }
             if (ImGui::Button("Guardar schema_views.sql")) {
                 save_file("schema_views.sql", sql);
             }
@@ -535,16 +551,16 @@ void InspectorView::render_ddl_viewer(const char* title, const model::SemanticAS
             ImGui::RadioButton("Documento Interpretado", &markdown_view_mode, 0);
             ImGui::SameLine();
             ImGui::RadioButton("Codigo Markdown Crudo", &markdown_view_mode, 1);
-            ImGui::SameLine();
-            ImGui::TextDisabled("|");
-            ImGui::SameLine();
 
             if (ImGui::Button("Copiar Markdown al Portapapeles")) {
                 ImGui::SetClipboardText(doc.c_str());
                 toast_message_ = "¡Diccionario Markdown copiado al portapapeles!";
                 toast_timer_ = 3.0f;
             }
-            ImGui::SameLine();
+            const float save_md_w = ImGui::CalcTextSize("Guardar data_dictionary.md").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            if (ImGui::GetContentRegionAvail().x >= save_md_w + ImGui::GetStyle().ItemSpacing.x) {
+                ImGui::SameLine();
+            }
             if (ImGui::Button("Guardar data_dictionary.md")) {
                 save_file("data_dictionary.md", doc);
             }
@@ -577,7 +593,10 @@ void InspectorView::render_ddl_viewer(const char* title, const model::SemanticAS
                 toast_message_ = "¡Modelo AST JSON copiado al portapapeles!";
                 toast_timer_ = 3.0f;
             }
-            ImGui::SameLine();
+            const float save_json_w = ImGui::CalcTextSize("Guardar semantic_ast.json").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+            if (ImGui::GetContentRegionAvail().x >= save_json_w + ImGui::GetStyle().ItemSpacing.x) {
+                ImGui::SameLine();
+            }
             if (ImGui::Button("Guardar semantic_ast.json")) {
                 save_file("semantic_ast.json", json_str);
             }

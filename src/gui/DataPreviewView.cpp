@@ -33,11 +33,19 @@ void DataPreviewView::render(const char* title, const std::vector<std::string>& 
         ImGui::EndCombo();
     }
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("| %zu columnas | %zu filas cargadas", preview_data_.column_names.size(), preview_data_.rows.size());
+    const float info_w = ImGui::CalcTextSize("| 000 columnas | 0000 filas cargadas").x;
+    if (ImGui::GetContentRegionAvail().x >= info_w + 10.0f) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("| %zu columnas | %zu filas cargadas", preview_data_.column_names.size(), preview_data_.rows.size());
+    }
 
-    ImGui::SameLine(ImGui::GetWindowWidth() - 250);
-    ImGui::SetNextItemWidth(230.0f);
+    const float filter_w = 210.0f;
+    if (ImGui::GetContentRegionAvail().x >= filter_w + 15.0f) {
+        ImGui::SameLine(ImGui::GetWindowWidth() - filter_w - 20.0f);
+    } else {
+        ImGui::Spacing();
+    }
+    ImGui::SetNextItemWidth(std::min(filter_w, ImGui::GetContentRegionAvail().x));
     ImGui::InputTextWithHint("##filter_preview", "Filtrar en filas...", filter_buffer_, sizeof(filter_buffer_));
 
     ImGui::Separator();

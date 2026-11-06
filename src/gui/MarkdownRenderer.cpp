@@ -175,8 +175,11 @@ void MarkdownRenderer::render_formatted_text(std::string_view text, bool wrapped
         return;
     }
 
-    // Renderizado con control de saltos de línea para texto enriquecido
+    // Renderizado con control de saltos de línea adaptativo para texto enriquecido
+    const float avail_w = ImGui::GetContentRegionAvail().x;
+    const float cur_start_x = ImGui::GetCursorScreenPos().x;
     const float window_right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
+    const float right_bound = (avail_w > 40.0f) ? std::min(cur_start_x + avail_w, window_right) : window_right;
     const float space_width = ImGui::CalcTextSize(" ").x;
 
     for (size_t t_idx = 0; t_idx < tokens.size(); ++t_idx) {
@@ -185,7 +188,7 @@ void MarkdownRenderer::render_formatted_text(std::string_view text, bool wrapped
         if (tok.type == TokenType::InlineCode) {
             const float item_width = ImGui::CalcTextSize(tok.text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
             const float cur_x = ImGui::GetCursorScreenPos().x;
-            if (t_idx > 0 && cur_x + item_width > window_right && cur_x > ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMin().x) {
+            if (t_idx > 0 && cur_x + item_width > right_bound && cur_x > cur_start_x + 5.0f) {
                 // Siguiente línea
             } else if (t_idx > 0) {
                 ImGui::SameLine(0.0f, 3.0f);
@@ -194,7 +197,7 @@ void MarkdownRenderer::render_formatted_text(std::string_view text, bool wrapped
             continue;
         }
 
-        // Para texto normal, negrita o enlaces, podemos separar palabras para que se ajusten al ancho
+        // Para texto normal, negrita o enlaces, separamos palabras para ajuste dinámico
         std::istringstream iss(tok.text);
         std::string word;
         bool first_word = true;
@@ -207,8 +210,7 @@ void MarkdownRenderer::render_formatted_text(std::string_view text, bool wrapped
 
             if (t_idx == 0 && first_word) {
                 // Primer token de la línea
-            } else if (cur_x + word_width + space_width > window_right &&
-                       cur_x > ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMin().x) {
+            } else if (cur_x + word_width + space_width > right_bound && cur_x > cur_start_x + 5.0f) {
                 // Salto a nueva línea
             } else {
                 ImGui::SameLine(0.0f, space_width);
@@ -296,12 +298,12 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
             if (line_idx < lines.size()) line_idx++; // Consumir ``` de cierre
 
             const float line_count = static_cast<float>(std::count(code_content.begin(), code_content.end(), '\n') + 1);
-            const float box_height = std::min(300.0f, std::max(40.0f, line_count * ImGui::GetTextLineHeightWithSpacing() + 16.0f));
+            const float box_height = std::min(260.0f, std::max(40.0f, line_count * ImGui::GetTextLineHeightWithSpacing() + 16.0f));
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.09f, 0.12f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.25f, 0.35f, 0.7f));
             const std::string child_id = "##code_block_" + std::to_string(block_counter++);
-            if (ImGui::BeginChild(child_id.c_str(), ImVec2(0, box_height), true, ImGuiWindowFlags_HorizontalScrollbar)) {
+            if (ImGui::BeginChild(child_id.c_str(), ImVec2(0, box_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar)) {
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.85f, 0.95f, 1.0f));
                 ImGui::TextUnformatted(code_content.c_str());
                 ImGui::PopStyleColor();
@@ -330,12 +332,21 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
                 const int col_count = static_cast<int>(headers.size());
                 if (col_count > 0) {
                     const std::string t_id = "##md_table_" + std::to_string(table_counter++);
-                    if (ImGui::BeginTable(t_id.c_str(), col_count,
-                                          ImGuiTableFlags_Borders |
-                                          ImGuiTableFlags_RowBg |
-                                          ImGuiTableFlags_Resizable |
-                                          ImGuiTableFlags_SizingStretchProp |
-                                          ImGuiTableFlags_ScrollX)) {
+                    const float avail_table_w = ImGui::GetContentRegionAvail().x;
+
+                    ImGuiTableFlags t_flags = ImGuiTableFlags_Borders |
+                                              ImGuiTableFlags_RowBg |
+                                              ImGuiTableFlags_Resizable;
+
+                    // Si hay pocas columnas o suficiente espacio horizontal, ajustar al ancho exacto del panel
+                    if (col_count <= 3 || avail_table_w >= static_cast<float>(col_count) * 110.0f) {
+                        t_flags |= ImGuiTableFlags_SizingStretchProp;
+                    } else {
+                        // En paneles estrechos con muchas columnas, permitir scroll horizontal limpio interno
+                        t_flags |= ImGuiTableFlags_ScrollX;
+                    }
+
+                    if (ImGui::BeginTable(t_id.c_str(), col_count, t_flags)) {
                         for (int c = 0; c < col_count; ++c) {
                             std::string col_title = strip_markdown(headers[c]);
                             ImGui::TableSetupColumn(col_title.c_str());
@@ -348,7 +359,9 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
                             for (int c = 0; c < col_count; ++c) {
                                 ImGui::TableNextColumn();
                                 if (c < static_cast<int>(row.size())) {
-                                    render_formatted_text(row[c], false);
+                                    ImGui::PushTextWrapPos(0.0f);
+                                    render_formatted_text(row[c], true);
+                                    ImGui::PopTextWrapPos();
                                 }
                             }
                         }
@@ -372,9 +385,8 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
 
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.16f, 0.22f, 0.85f));
             ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.25f, 0.55f, 0.85f, 1.0f));
-            const float q_height = std::max(36.0f, static_cast<float>(quote_lines.size()) * ImGui::GetTextLineHeightWithSpacing() + 16.0f);
             const std::string q_id = "##quote_" + std::to_string(quote_counter++);
-            if (ImGui::BeginChild(q_id.c_str(), ImVec2(0, q_height), true)) {
+            if (ImGui::BeginChild(q_id.c_str(), ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY)) {
                 for (const auto& q_line : quote_lines) {
                     render_formatted_text(q_line, true);
                 }

@@ -228,11 +228,17 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     // ==========================================
     // BARRA DE HERRAMIENTAS SUPERIOR DEL CANVAS
     // ==========================================
+    auto same_line_if_fits = [](float needed_w) {
+        if (ImGui::GetContentRegionAvail().x >= needed_w + ImGui::GetStyle().ItemSpacing.x) {
+            ImGui::SameLine();
+        }
+    };
+
     ImGui::SetNextItemWidth(180.0f);
     ImGui::InputTextWithHint("##filter_graph", "Buscar tabla/rol...", search_filter_, sizeof(search_filter_));
-    ImGui::SameLine();
 
     // Selector de modo de coloración
+    same_line_if_fits(160.0f);
     ImGui::SetNextItemWidth(160.0f);
     const char* color_mode_items[] = { "Cluster Espectral", "Rol Ontologico", "Gravedad PageRank" };
     int current_mode_idx = static_cast<int>(color_mode_);
@@ -240,18 +246,23 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
         color_mode_ = static_cast<NodeColorMode>(current_mode_idx);
         update_node_colors();
     }
-    ImGui::SameLine();
 
     // Controles de física y cámara
+    const float phys_btn_w = ImGui::CalcTextSize("Reanudar Fisica").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    same_line_if_fits(phys_btn_w);
     if (ImGui::Button(physics_paused_ ? "Reanudar Fisica" : "Pausar Fisica")) {
         physics_paused_ = !physics_paused_;
     }
-    ImGui::SameLine();
+
+    const float fit_btn_w = ImGui::CalcTextSize("Centrar Vista").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    same_line_if_fits(fit_btn_w);
     if (ImGui::Button("Centrar Vista")) {
         const ImVec2 sz = ImGui::GetContentRegionAvail();
         fit_to_screen(sz.x, sz.y);
     }
-    ImGui::SameLine();
+
+    const float reorg_btn_w = ImGui::CalcTextSize("Reorganizar").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    same_line_if_fits(reorg_btn_w);
     if (ImGui::Button("Reorganizar")) {
         std::mt19937 rng(1337);
         std::uniform_real_distribution<Float32> dist(-60.0f, 60.0f);
@@ -261,7 +272,9 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
         }
         temperature_ = 80.0f;
     }
-    ImGui::SameLine();
+
+    const float chk_w = ImGui::CalcTextSize("Ver Nombres Aristas").x + ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x * 2.0f;
+    same_line_if_fits(chk_w);
     ImGui::Checkbox("Ver Nombres Aristas", &show_edge_labels_);
 
     ImGui::Separator();

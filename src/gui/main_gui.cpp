@@ -41,6 +41,17 @@ void render_badge(const char* text, const ImVec4& bg_color, const ImVec4& text_c
     ImGui::PopStyleColor(4);
 }
 
+void render_responsive_badge(const char* text, const ImVec4& bg_color, const ImVec4& text_color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f), bool try_same_line = true) {
+    const float badge_w = ImGui::CalcTextSize(text).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    const float avail = ImGui::GetContentRegionAvail().x;
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+
+    if (try_same_line && avail >= badge_w + spacing) {
+        ImGui::SameLine();
+    }
+    render_badge(text, bg_color, text_color);
+}
+
 void setup_default_dock_layout(ImGuiID dockspace_id, const ImVec2& size) {
     ImGui::DockBuilderRemoveNode(dockspace_id);
     ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
@@ -430,9 +441,12 @@ int main(int argc, char* argv[]) {
                 ImGui::EndMenu();
             }
 
-            // Indicador de estado en la barra de menú
-            ImGui::SameLine(ImGui::GetWindowWidth() - 360);
-            ImGui::TextDisabled("%s", status_message.c_str());
+            // Indicador de estado en la barra de menú (adaptativo a la anchura)
+            const float status_w = 340.0f;
+            if (ImGui::GetContentRegionAvail().x >= status_w + 10.0f) {
+                ImGui::SameLine(ImGui::GetWindowWidth() - status_w);
+                ImGui::TextDisabled("%s", status_message.c_str());
+            }
 
             ImGui::EndMainMenuBar();
         }
@@ -441,8 +455,10 @@ int main(int argc, char* argv[]) {
         // ESTADO 1: ESPERANDO INPUT DE DATOS (PANTALLA DE BIENVENIDA E INGESTA)
         // ====================================================================
         if (!has_dataset_loaded) {
-            // Fondo centrado para la pantalla de bienvenida
-            const ImVec2 center_size(920.0f, 620.0f);
+            // Fondo centrado adaptativo para la pantalla de bienvenida
+            const float max_w = std::min(920.0f, std::max(300.0f, viewport->WorkSize.x - 30.0f));
+            const float max_h = std::min(640.0f, std::max(200.0f, viewport->WorkSize.y - 30.0f));
+            const ImVec2 center_size(max_w, max_h);
             const ImVec2 center_pos(
                 viewport->WorkPos.x + std::max(0.0f, (viewport->WorkSize.x - center_size.x) * 0.5f),
                 viewport->WorkPos.y + std::max(0.0f, (viewport->WorkSize.y - center_size.y) * 0.5f)
@@ -452,7 +468,6 @@ int main(int argc, char* argv[]) {
             ImGui::SetNextWindowSize(center_size, ImGuiCond_Always);
 
             ImGuiWindowFlags welcome_flags = ImGuiWindowFlags_NoCollapse |
-                                             ImGuiWindowFlags_NoResize |
                                              ImGuiWindowFlags_NoMove;
 
             if (ImGui::Begin("Bienvenido a InteliData - Esperando Datos", nullptr, welcome_flags)) {
@@ -474,23 +489,20 @@ int main(int argc, char* argv[]) {
 
                         // TARJETA 1: NORTHWIND (DESTACADA)
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.13f, 0.17f, 0.24f, 1.0f));
-                        ImGui::BeginChild("NorthwindCard", ImVec2(0, 150), true);
+                        ImGui::BeginChild("NorthwindCard", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
 
                         ImGui::TextColored(ImVec4(0.3f, 0.95f, 0.6f, 1.0f), "Northwind - Base de Datos Relacional Comercial");
-                        ImGui::SameLine();
-                        render_badge("RECOMENDADO", ImVec4(0.18f, 0.70f, 0.35f, 1.0f));
-                        ImGui::SameLine();
-                        render_badge("12 TABLAS", ImVec4(0.25f, 0.45f, 0.75f, 1.0f));
-                        ImGui::SameLine();
-                        render_badge("25 RELACIONES", ImVec4(0.55f, 0.30f, 0.75f, 1.0f));
-                        ImGui::SameLine();
-                        render_badge("SQLITE", ImVec4(0.70f, 0.45f, 0.15f, 1.0f));
+                        render_responsive_badge("RECOMENDADO", ImVec4(0.18f, 0.70f, 0.35f, 1.0f));
+                        render_responsive_badge("12 TABLAS", ImVec4(0.25f, 0.45f, 0.75f, 1.0f));
+                        render_responsive_badge("25 RELACIONES", ImVec4(0.55f, 0.30f, 0.75f, 1.0f));
+                        render_responsive_badge("SQLITE", ImVec4(0.70f, 0.45f, 0.15f, 1.0f));
 
                         ImGui::Spacing();
                         ImGui::TextWrapped("Esquema relacional comercial estandar con Orders, Customers, OrderDetails, Products, Categories, Suppliers, Shippers y Employees. Ideal para verificar la inferencia PIND exacta, centralidad PageRank y perfiles de Benford.");
 
                         ImGui::Spacing();
-                        if (ImGui::Button("  [Cargar] Analizar Northwind (SQLite)  ", ImVec2(320, 32))) {
+                        const float nw_btn_w = std::min(320.0f, ImGui::GetContentRegionAvail().x);
+                        if (ImGui::Button("  [Cargar] Analizar Northwind (SQLite)  ", ImVec2(nw_btn_w, 32))) {
                             if (fs::exists("samples/northwind.db")) {
                                 load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/northwind.db"),
                                              "samples/northwind.db", data_hub.options());
@@ -505,19 +517,18 @@ int main(int argc, char* argv[]) {
 
                         // TARJETA 2: E-COMMERCE OFUSCADO
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.18f, 1.0f));
-                        ImGui::BeginChild("ObfuscatedCard", ImVec2(0, 130), true);
+                        ImGui::BeginChild("ObfuscatedCard", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
 
                         ImGui::TextColored(ImVec4(0.95f, 0.65f, 0.25f, 1.0f), "E-Commerce Multitabla Ofuscado");
-                        ImGui::SameLine();
-                        render_badge("4 TABLAS OFUSCADAS", ImVec4(0.80f, 0.40f, 0.15f, 1.0f));
-                        ImGui::SameLine();
-                        render_badge("DESOFUSCACION", ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
+                        render_responsive_badge("4 TABLAS OFUSCADAS", ImVec4(0.80f, 0.40f, 0.15f, 1.0f));
+                        render_responsive_badge("DESOFUSCACION", ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
 
                         ImGui::Spacing();
                         ImGui::TextWrapped("Tablas con nombres cripticos (tbl_001_usr a tbl_004_log). Demuestra el descubrimiento de nombres canonicos, estados absorbentes de Markov y particion espectral Fiedler en 2 subdominios.");
 
                         ImGui::Spacing();
-                        if (ImGui::Button("  Cargar E-Commerce Ofuscado (SQLite)  ", ImVec2(300, 28))) {
+                        const float obf_btn_w = std::min(300.0f, ImGui::GetContentRegionAvail().x);
+                        if (ImGui::Button("  Cargar E-Commerce Ofuscado (SQLite)  ", ImVec2(obf_btn_w, 28))) {
                             if (fs::exists("samples/ecommerce_obfuscated.db")) {
                                 load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/ecommerce_obfuscated.db"),
                                              "samples/ecommerce_obfuscated.db", data_hub.options());
@@ -530,17 +541,17 @@ int main(int argc, char* argv[]) {
 
                         // TARJETA 3: TRANSACCIONES FINANCIERAS
                         ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.14f, 0.15f, 0.18f, 1.0f));
-                        ImGui::BeginChild("TransaccionesCard", ImVec2(0, 110), true);
+                        ImGui::BeginChild("TransaccionesCard", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
 
                         ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.95f, 1.0f), "Transacciones Financieras (CSV)");
-                        ImGui::SameLine();
-                        render_badge("BENFORD CHI-CUADRADO", ImVec4(0.20f, 0.65f, 0.35f, 1.0f));
+                        render_responsive_badge("BENFORD CHI-CUADRADO", ImVec4(0.20f, 0.65f, 0.35f, 1.0f));
 
                         ImGui::Spacing();
                         ImGui::TextWrapped("Registros con montos monetarios logaritmicos para comprobar la bondad de ajuste a la Ley de Benford.");
 
                         ImGui::Spacing();
-                        if (ImGui::Button("  Cargar Transacciones (CSV)  ", ImVec2(240, 26))) {
+                        const float tx_btn_w = std::min(240.0f, ImGui::GetContentRegionAvail().x);
+                        if (ImGui::Button("  Cargar Transacciones (CSV)  ", ImVec2(tx_btn_w, 26))) {
                             if (fs::exists("samples/samples_transacciones.csv")) {
                                 load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/samples_transacciones.csv"),
                                              "samples/samples_transacciones.csv", data_hub.options());
@@ -685,18 +696,22 @@ int main(int argc, char* argv[]) {
                 if (ImGui::Button("  [Origen] Cambiar Origen  ")) {
                     show_data_hub_modal = true;
                 }
-                ImGui::SameLine();
-                if (ImGui::Button("  [Demo] Northwind  ")) {
-                    if (fs::exists("samples/northwind.db")) {
-                        load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/northwind.db"),
-                                     "samples/northwind.db", data_hub.options());
+
+                // Mostrar accesos directos de demo solo si hay suficiente espacio horizontal
+                if (ImGui::GetWindowWidth() >= 1050.0f) {
+                    ImGui::SameLine();
+                    if (ImGui::Button("  [Demo] Northwind  ")) {
+                        if (fs::exists("samples/northwind.db")) {
+                            load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/northwind.db"),
+                                         "samples/northwind.db", data_hub.options());
+                        }
                     }
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("  [Demo] E-Commerce  ")) {
-                    if (fs::exists("samples/ecommerce_obfuscated.db")) {
-                        load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/ecommerce_obfuscated.db"),
-                                     "samples/ecommerce_obfuscated.db", data_hub.options());
+                    ImGui::SameLine();
+                    if (ImGui::Button("  [Demo] E-Commerce  ")) {
+                        if (fs::exists("samples/ecommerce_obfuscated.db")) {
+                            load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/ecommerce_obfuscated.db"),
+                                         "samples/ecommerce_obfuscated.db", data_hub.options());
+                        }
                     }
                 }
 
@@ -742,19 +757,28 @@ int main(int argc, char* argv[]) {
                     export_file("data_dictionary.md", intelidata::pipeline::DDLGenerator::generate_data_dictionary_markdown(current_ast));
                 }
 
-                ImGui::SameLine(ImGui::GetWindowWidth() - 420);
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Activo:");
-                ImGui::SameLine();
-                ImGui::TextUnformatted(current_dataset_label.c_str());
-                ImGui::SameLine();
-                ImGui::TextDisabled("(%zu tablas, %zu relaciones)", current_ast.tables.size(), current_ast.relationships.size());
+                // Información activa adaptativa (solo si cabe a la derecha sin solaparse)
+                const float info_full_w = 340.0f;
+                const float info_compact_w = 140.0f;
+                const float avail_toolbar = ImGui::GetContentRegionAvail().x;
+                if (avail_toolbar >= info_full_w + 10.0f) {
+                    ImGui::SameLine(ImGui::GetWindowWidth() - info_full_w);
+                    ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Activo:");
+                    ImGui::SameLine();
+                    ImGui::TextUnformatted(current_dataset_label.c_str());
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("(%zu tablas, %zu rel.)", current_ast.tables.size(), current_ast.relationships.size());
+                } else if (avail_toolbar >= info_compact_w + 10.0f) {
+                    ImGui::SameLine(ImGui::GetWindowWidth() - info_compact_w);
+                    ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s", current_dataset_label.c_str());
+                }
             }
             ImGui::End();
             ImGui::PopStyleVar(2);
             ImGui::PopStyleColor();
 
             // ----------------------------------------------------------------
-            // 2.2. Barra de Estado Inferior Fija
+            // 2.2. Barra de Estado Inferior Fija Adaptativa
             // ----------------------------------------------------------------
             ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + viewport->WorkSize.y - statusbar_height));
             ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, statusbar_height));
@@ -765,15 +789,32 @@ int main(int argc, char* argv[]) {
             if (ImGui::Begin("##FixedStatusBar", nullptr, fixed_toolbar_flags)) {
                 ImGui::TextColored(ImVec4(0.2f, 0.9f, 0.5f, 1.0f), "● Activo: %s",
                                    current_dataset_label.c_str());
-                ImGui::SameLine(280);
-                ImGui::Text("Entidades: %zu | Relaciones PIND: %zu",
-                            current_ast.tables.size(), current_ast.relationships.size());
-                ImGui::SameLine(540);
-                ImGui::Text("Conectividad Fiedler: %.4f", current_ast.system_summary.fiedler_connectivity);
-                ImGui::SameLine(770);
-                ImGui::Text("Tiempo Inferencia: %.1f ms", last_analysis_time_ms);
-                ImGui::SameLine(ImGui::GetWindowWidth() - 140);
-                ImGui::Text("%.1f FPS", io.Framerate);
+
+                const float avail_status = ImGui::GetContentRegionAvail().x;
+
+                if (avail_status >= 520.0f) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine();
+                    ImGui::Text("Entidades: %zu | Relaciones PIND: %zu",
+                                current_ast.tables.size(), current_ast.relationships.size());
+                }
+                if (avail_status >= 360.0f) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine();
+                    ImGui::Text("Fiedler: %.4f", current_ast.system_summary.fiedler_connectivity);
+                }
+                if (avail_status >= 200.0f) {
+                    ImGui::SameLine();
+                    ImGui::TextDisabled("|");
+                    ImGui::SameLine();
+                    ImGui::Text("%.1f ms", last_analysis_time_ms);
+                }
+                if (ImGui::GetContentRegionAvail().x >= 75.0f) {
+                    ImGui::SameLine(ImGui::GetWindowWidth() - 75.0f);
+                    ImGui::Text("%.0f FPS", io.Framerate);
+                }
             }
             ImGui::End();
             ImGui::PopStyleVar(2);
