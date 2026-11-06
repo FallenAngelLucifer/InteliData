@@ -65,8 +65,52 @@ void setup_default_dock_layout(ImGuiID dockspace_id, const ImVec2& size) {
     ImGui::DockBuilderDockWindow("Previsualizacion de Datos Crudos", dock_bottom);
     ImGui::DockBuilderDockWindow("Inteligencia y Diagnostico de Negocio", dock_right);
     ImGui::DockBuilderDockWindow("Centro de Exportacion DDL / Markdown / JSON", dock_right_bottom);
-
     ImGui::DockBuilderFinish(dockspace_id);
+}
+
+void setup_application_fonts(ImGuiIO& io) {
+    const std::vector<std::string> candidate_fonts = {
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/carlito/Carlito-Regular.ttf",
+        "C:\\Windows\\Fonts\\segoeui.ttf",
+        "C:\\Windows\\Fonts\\arial.ttf",
+        "C:\\Windows\\Fonts\\tahoma.ttf",
+        "/System/Library/Fonts/SFCompact.ttf",
+        "/System/Library/Fonts/Helvetica.ttc",
+        "/Library/Fonts/Arial.ttf"
+    };
+
+    static const ImWchar glyph_ranges[] = {
+        0x0020, 0x00FF, // Basic Latin + Latin-1 Supplement (á, é, í, ó, ú, ñ, ¿, ¡, etc.)
+        0x0100, 0x017F, // Latin Extended-A
+        0x2000, 0x206F, // General Punctuation (• bullet, etc.)
+        0x2190, 0x21FF, // Arrows (←, →, ↑, ↓)
+        0x25A0, 0x25FF, // Geometric Shapes (●, ■, etc.)
+        0
+    };
+
+    bool loaded = false;
+    for (const auto& path : candidate_fonts) {
+        if (fs::exists(path)) {
+            ImFontConfig config;
+            config.OversampleH = 2;
+            config.OversampleV = 2;
+            config.PixelSnapH = true;
+            ImFont* font = io.Fonts->AddFontFromFileTTF(path.c_str(), 16.0f, &config, glyph_ranges);
+            if (font != nullptr) {
+                loaded = true;
+                break;
+            }
+        }
+    }
+
+    if (!loaded) {
+        io.Fonts->AddFontDefault();
+    }
 }
 
 } // namespace
@@ -101,6 +145,9 @@ int main(int argc, char* argv[]) {
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable; // Sistema de Docking
+
+    // Cargar fuente TTF del sistema con cobertura completa Latin-1 y símbolos
+    setup_application_fonts(io);
 
     ImGui::StyleColorsDark();
 
@@ -443,7 +490,7 @@ int main(int argc, char* argv[]) {
                         ImGui::TextWrapped("Esquema relacional comercial estandar con Orders, Customers, OrderDetails, Products, Categories, Suppliers, Shippers y Employees. Ideal para verificar la inferencia PIND exacta, centralidad PageRank y perfiles de Benford.");
 
                         ImGui::Spacing();
-                        if (ImGui::Button("  🚀 Cargar y Analizar Northwind (SQLite)  ", ImVec2(320, 32))) {
+                        if (ImGui::Button("  [Cargar] Analizar Northwind (SQLite)  ", ImVec2(320, 32))) {
                             if (fs::exists("samples/northwind.db")) {
                                 load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/northwind.db"),
                                              "samples/northwind.db", data_hub.options());
@@ -467,7 +514,7 @@ int main(int argc, char* argv[]) {
                         render_badge("DESOFUSCACION", ImVec4(0.30f, 0.50f, 0.80f, 1.0f));
 
                         ImGui::Spacing();
-                        ImGui::TextWrapped("Tablas con nombres crípticos (tbl_001_usr a tbl_004_log). Demuestra el descubrimiento de nombres canonicos, estados absorbentes de Markov y particion espectral Fiedler en 2 subdominios.");
+                        ImGui::TextWrapped("Tablas con nombres cripticos (tbl_001_usr a tbl_004_log). Demuestra el descubrimiento de nombres canonicos, estados absorbentes de Markov y particion espectral Fiedler en 2 subdominios.");
 
                         ImGui::Spacing();
                         if (ImGui::Button("  Cargar E-Commerce Ofuscado (SQLite)  ", ImVec2(300, 28))) {
@@ -523,7 +570,7 @@ int main(int argc, char* argv[]) {
                         }
 
                         ImGui::BeginDisabled(!can_load_path);
-                        if (ImGui::Button("  🚀 Cargar y Analizar Archivo  ", ImVec2(260, 32))) {
+                        if (ImGui::Button("  [Cargar] Analizar Archivo  ", ImVec2(260, 32))) {
                             load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>(welcome_file_path),
                                          welcome_file_path, data_hub.options());
                         }
@@ -571,7 +618,7 @@ int main(int argc, char* argv[]) {
 
                         ImGui::InputTextMultiline("##ram_sql", ram_sql_buf, sizeof(ram_sql_buf), ImVec2(-1, 220), ImGuiInputTextFlags_AllowTabInput);
 
-                        if (ImGui::Button("  ⚡ Ejecutar y Analizar Esquema en RAM  ", ImVec2(300, 32))) {
+                        if (ImGui::Button("  [Ejecutar] Analizar Esquema en RAM  ", ImVec2(300, 32))) {
                             try {
                                 auto mem_adp = std::make_unique<intelidata::ingestion::DuckDBAdapter>(":memory:");
                                 mem_adp->execute(ram_sql_buf);
@@ -635,18 +682,18 @@ int main(int argc, char* argv[]) {
                                                   ImGuiWindowFlags_NoSavedSettings;
 
             if (ImGui::Begin("##FixedTopToolbar", nullptr, fixed_toolbar_flags)) {
-                if (ImGui::Button("  📂 Cambiar Origen  ")) {
+                if (ImGui::Button("  [Origen] Cambiar Origen  ")) {
                     show_data_hub_modal = true;
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("  📦 Northwind  ")) {
+                if (ImGui::Button("  [Demo] Northwind  ")) {
                     if (fs::exists("samples/northwind.db")) {
                         load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/northwind.db"),
                                      "samples/northwind.db", data_hub.options());
                     }
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("  ⚡ E-Commerce  ")) {
+                if (ImGui::Button("  [Demo] E-Commerce  ")) {
                     if (fs::exists("samples/ecommerce_obfuscated.db")) {
                         load_adapter(std::make_unique<intelidata::ingestion::DuckDBAdapter>("samples/ecommerce_obfuscated.db"),
                                      "samples/ecommerce_obfuscated.db", data_hub.options());
@@ -657,7 +704,7 @@ int main(int argc, char* argv[]) {
                 ImGui::TextDisabled("|");
                 ImGui::SameLine();
 
-                if (ImGui::Button("  🔄 Re-analizar  ")) {
+                if (ImGui::Button("  [Re-analizar]  ")) {
                     if (!current_dataset_label.empty() && current_adapter) {
                         if (current_dataset_label.starts_with("Memoria")) {
                             try {
@@ -679,7 +726,7 @@ int main(int argc, char* argv[]) {
                 }
 
                 ImGui::SameLine();
-                if (ImGui::Button("  🎯 Centrar Grafo  ")) {
+                if (ImGui::Button("  [Centrar Grafo]  ")) {
                     canvas.fit_to_screen(800.0f, 600.0f);
                 }
 
@@ -687,11 +734,11 @@ int main(int argc, char* argv[]) {
                 ImGui::TextDisabled("|");
                 ImGui::SameLine();
 
-                if (ImGui::Button("  💾 Guardar DDL  ")) {
+                if (ImGui::Button("  [Guardar DDL]  ")) {
                     export_file("schema_views.sql", intelidata::pipeline::DDLGenerator::generate_sql_views(current_ast));
                 }
                 ImGui::SameLine();
-                if (ImGui::Button("  📑 Guardar Docs  ")) {
+                if (ImGui::Button("  [Guardar Docs]  ")) {
                     export_file("data_dictionary.md", intelidata::pipeline::DDLGenerator::generate_data_dictionary_markdown(current_ast));
                 }
 

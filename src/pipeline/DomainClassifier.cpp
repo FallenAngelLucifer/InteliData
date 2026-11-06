@@ -374,103 +374,103 @@ DomainClassificationResult DomainClassifier::classify(const model::SemanticAST& 
         switch (top_domain) {
             case DomainType::EcommerceSales:
                 res.domain_name = "E-Commerce / Ventas y Facturación Comercial";
-                res.icon = "🛒";
+                res.icon = "[VENTAS]";
                 res.primary_focus = "Transacciones comerciales, captación de pedidos y distribución de inventario";
                 res.industry_tags = {"Comercio", "Facturación", "Ventas", "Retail"};
                 break;
             case DomainType::BankingFinance:
                 res.domain_name = "Banca, Finanzas y Contabilidad";
-                res.icon = "💼";
+                res.icon = "[FINANZAS]";
                 res.primary_focus = "Libro mayor, movimientos contables, cuentas y balances financieros";
                 res.industry_tags = {"Banca", "Contabilidad", "Auditoría", "Inversiones"};
                 break;
             case DomainType::SportsTournament:
                 res.domain_name = "Deportes, Ligas y Torneos Competitivos";
-                res.icon = "🏆";
+                res.icon = "[DEPORTES]";
                 res.primary_focus = "Organización de certámenes, calendarios deportivos, equipos y clasificaciones";
                 res.industry_tags = {"Deportes", "Ligas", "Torneos", "Competición"};
                 break;
             case DomainType::GamingMatchmaking:
                 res.domain_name = "Videojuegos, Gaming y Plataformas de Combate/Salas en Línea";
-                res.icon = "🎮";
+                res.icon = "[GAMING]";
                 res.primary_focus = "Coordinación de combates/partidas, salas de conexión en tiempo real y estadísticas";
                 res.industry_tags = {"Gaming", "Combates", "Salas en Línea", "Matchmaking"};
                 break;
             case DomainType::HealthcareClinical:
                 res.domain_name = "Salud, Hospitales y Gestión Clínica";
-                res.icon = "🏥";
+                res.icon = "[SALUD]";
                 res.primary_focus = "Expedientes médicos, consultas, diagnósticos y tratamientos de pacientes";
                 res.industry_tags = {"Salud", "Clínicas", "Hospitales", "Medicina"};
                 break;
             case DomainType::EducationAcademic:
                 res.domain_name = "Educación, Universidades y Gestión Académica";
-                res.icon = "🎓";
+                res.icon = "[ACADEMICO]";
                 res.primary_focus = "Matrículas, seguimiento curricular de estudiantes, cursos y evaluaciones";
                 res.industry_tags = {"Educación", "Universidades", "Académico", "Cursos"};
                 break;
             case DomainType::LogisticsFleet:
                 res.domain_name = "Logística, Distribución, Almacenes y Flotas";
-                res.icon = "🚚";
+                res.icon = "[LOGISTICA]";
                 res.primary_focus = "Despachos, trazabilidad de envíos, asignación de vehículos y rutas";
                 res.industry_tags = {"Logística", "Transporte", "Flotas", "Almacenes"};
                 break;
             case DomainType::HumanResources:
                 res.domain_name = "Recursos Humanos, Personal y Nómina (RRHH)";
-                res.icon = "👥";
+                res.icon = "[RRHH]";
                 res.primary_focus = "Nóminas de pago, estructura de cargos, contratos y control de asistencia";
                 res.industry_tags = {"RRHH", "Nómina", "Talento", "Personal"};
                 break;
             case DomainType::SocialCommunity:
                 res.domain_name = "Redes Sociales, Comunidades Digitales y Mensajería";
-                res.icon = "💬";
+                res.icon = "[SOCIAL]";
                 res.primary_focus = "Publicaciones, hilos de conversación y redes de interacción entre usuarios";
                 res.industry_tags = {"Social", "Mensajería", "Comunidad", "Chat"};
                 break;
             case DomainType::HospitalityTourism:
                 res.domain_name = "Hotelería, Turismo y Gestión de Reservas";
-                res.icon = "🏨";
+                res.icon = "[HOSPEDAJE]";
                 res.primary_focus = "Ocupación de habitaciones, reservas, estancias y servicios a huéspedes";
                 res.industry_tags = {"Hotelería", "Turismo", "Reservas", "Alojamiento"};
                 break;
             case DomainType::RealEstate:
                 res.domain_name = "Bienes Raíces, Inmobiliaria y Gestión de Propiedades";
-                res.icon = "🏢";
+                res.icon = "[INMOBILIARIO]";
                 res.primary_focus = "Catálogo de inmuebles, contratos de arrendamiento y corretaje inmobiliario";
                 res.industry_tags = {"Inmobiliaria", "Bienes Raíces", "Alquileres", "Propiedades"};
                 break;
             case DomainType::ManufacturingSupply:
                 res.domain_name = "Manufactura, Producción Industrial y Control de Calidad";
-                res.icon = "🏭";
+                res.icon = "[MANUFACTURA]";
                 res.primary_focus = "Órdenes de producción, rendimiento de maquinaria, lotes y merma de insumos";
                 res.industry_tags = {"Manufactura", "Producción", "Industria", "Calidad"};
                 break;
             case DomainType::TelemetryIoT:
                 res.domain_name = "Infraestructura de Red, Sensores y Telemetría IoT";
-                res.icon = "📡";
+                res.icon = "[TELEMETRIA]";
                 res.primary_focus = "Monitoreo continuo de nodos, lectura de sensores y registro de eventos";
                 res.industry_tags = {"IoT", "Telemetría", "Sensores", "Redes"};
                 break;
             case DomainType::PublicSectorGov:
                 res.domain_name = "Sector Público, Trámites Gubernamentales y Ciudadanía";
-                res.icon = "🏛️";
+                res.icon = "[GOBIERNO]";
                 res.primary_focus = "Gestión de expedientes ciudadanos, resoluciones, licencias y trámites del Estado";
                 res.industry_tags = {"Gobierno", "Sector Público", "Trámites", "Ciudadanos"};
                 break;
             case DomainType::MediaStreaming:
                 res.domain_name = "Streaming, Medios Audiovisuales y Contenido Digital";
-                res.icon = "🎬";
+                res.icon = "[STREAMING]";
                 res.primary_focus = "Catálogos de contenido multimedia, métricas de reproducción y suscripciones";
                 res.industry_tags = {"Streaming", "Multimedia", "Música", "Video"};
                 break;
             case DomainType::CustomerSupportCRM:
                 res.domain_name = "CRM, Atención al Cliente, Helpdesk y Ticketing";
-                res.icon = "🎫";
+                res.icon = "[CRM]";
                 res.primary_focus = "Seguimiento de incidencias de clientes, tiempos SLA y rendimiento de agentes";
                 res.industry_tags = {"CRM", "Soporte", "Tickets", "Helpdesk"};
                 break;
             case DomainType::LegalJudicial:
                 res.domain_name = "Gestión Legal, Jurídica y Casos Procesales";
-                res.icon = "⚖️";
+                res.icon = "[LEGAL]";
                 res.primary_focus = "Administración de litigios, audiencias procesales, sentencias y expedientes judiciales";
                 res.industry_tags = {"Legal", "Judicial", "Litigios", "Derecho"};
                 break;
@@ -480,7 +480,7 @@ DomainClassificationResult DomainClassifier::classify(const model::SemanticAST& 
     } else {
         // 18. Inferencia Adaptativa Inductiva
         res.type = DomainType::AdaptiveGeneral;
-        res.icon = "⚙️";
+        res.icon = "[GENERAL]";
         res.confidence = 0.82;
         res.industry_tags = {"Operativo", "Relacional", "Estructural"};
 

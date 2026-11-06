@@ -112,6 +112,7 @@ if(INTELIDATA_BUILD_GUI)
         src/gui/InspectorView.cpp
         src/gui/DataHubView.cpp
         src/gui/DataPreviewView.cpp
+        src/gui/MarkdownRenderer.cpp
     )
 
     target_link_libraries(intelidata-gui

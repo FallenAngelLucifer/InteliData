@@ -26,6 +26,14 @@ target_link_libraries(intelidata_tests
 
 target_apply_intelidata_compiler_flags(intelidata_tests)
 
+if(TARGET imgui)
+    target_sources(intelidata_tests PRIVATE
+        test_markdown.cpp
+        ../src/gui/MarkdownRenderer.cpp
+    )
+    target_link_libraries(intelidata_tests PRIVATE imgui)
+endif()
+
 include(CTest)
 include(Catch)
 catch_discover_tests(intelidata_tests)

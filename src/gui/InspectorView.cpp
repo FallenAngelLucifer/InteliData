@@ -1,4 +1,5 @@
 #include "intelidata/gui/InspectorView.hpp"
+#include "intelidata/gui/MarkdownRenderer.hpp"
 #include "intelidata/pipeline/DDLGenerator.hpp"
 #include "intelidata/core/Benford.hpp"
 #include <implot.h>
@@ -51,11 +52,11 @@ void InspectorView::render_inspector(const char* title, const model::SemanticAST
 
     // Barra de conmutación superior: Diagnóstico General vs Ficha de Entidad
     if (matched_table) {
-        if (ImGui::Button("  🌐 Diagnostico Global del Negocio  ")) {
+        if (ImGui::Button("  [Diagnostico Global del Negocio]  ")) {
             inspector_tab_ = 1;
         }
         ImGui::SameLine();
-        if (ImGui::Button(("  📋 Ficha de Entidad: " + matched_table->recommended_name + "  ").c_str())) {
+        if (ImGui::Button(("  [Ficha de Entidad: " + matched_table->recommended_name + "]  ").c_str())) {
             inspector_tab_ = 0;
         }
         ImGui::Separator();
@@ -109,11 +110,11 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     // ==========================================
     // 2. Historia y Operación del Negocio
     // ==========================================
-    ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.30f, 1.0f), "📖 Historia y Funcionamiento del Negocio:");
+    ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.30f, 1.0f), "PROPOSITO Y FUNCIONAMIENTO DEL NEGOCIO:");
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.13f, 0.16f, 0.22f, 0.9f));
     ImGui::BeginChild("BusinessNarrativeCard", ImVec2(0, 110), true);
     if (!ast.system_summary.business_narrative.empty()) {
-        ImGui::TextWrapped("%s", ast.system_summary.business_narrative.c_str());
+        MarkdownRenderer::render_formatted_text(ast.system_summary.business_narrative);
     } else {
         ImGui::TextWrapped("El sistema ha reconstruido un modelo relacional de %zu entidades y %zu dependencias foraneas.",
                            ast.tables.size(), ast.relationships.size());
@@ -127,7 +128,7 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     // 3. Módulos y Subdominios Funcionales
     // ==========================================
     if (!ast.system_summary.subdomains.empty()) {
-        ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.60f, 1.0f), "🗂️ Modulos y Subdominios de la Empresa (Corte Espectral):");
+        ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.60f, 1.0f), "SUBDOMINIOS Y MODULOS DE LA EMPRESA (Corte Espectral):");
         ImGui::TextDisabled("Agrupacion funcional derivada del Laplaciano normalizado y el vector de Fiedler:");
         ImGui::Spacing();
 
@@ -136,7 +137,7 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
             const float box_h = 75.0f + static_cast<float>(sub.table_names.size() > 6 ? 26 : 0);
             ImGui::BeginChild(("Subdomain_" + std::to_string(sub.cluster_id)).c_str(), ImVec2(0, box_h), true);
 
-            ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "• %s", sub.name.c_str());
+            ImGui::TextColored(ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "* %s", sub.name.c_str());
             ImGui::SameLine();
             char c_buf[16];
             std::snprintf(c_buf, sizeof(c_buf), "Cluster C%d", sub.cluster_id);
@@ -166,16 +167,16 @@ void InspectorView::render_global_business_diagnostic(const model::SemanticAST& 
     // ==========================================
     if (!ast.system_summary.executive_insights.empty()) {
         ImGui::Spacing();
-        ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.35f, 1.0f), "🔍 Hallazgos y Diagnostico de Integridad Forense:");
+        ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.35f, 1.0f), "HALLAZGOS Y AUDITORIA FORENSE:");
         for (const auto& ins : ast.system_summary.executive_insights) {
             ImGui::Bullet();
-            ImGui::TextWrapped("%s", ins.c_str());
+            MarkdownRenderer::render_formatted_text(ins, true);
         }
     }
 
     ImGui::Spacing();
     ImGui::Separator();
-    ImGui::TextDisabled("💡 Seleccione cualquier tabla en el Grafo Ontologico 2D para abrir su Ficha de Negocio detallada.");
+    ImGui::TextDisabled("[INFO] Seleccione cualquier tabla en el Grafo Ontologico 2D para abrir su Ficha de Negocio detallada.");
 }
 
 void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, const model::SemanticAST& ast) {
@@ -217,15 +218,15 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
     // ==========================================
     if (ImGui::BeginTabBar("EntitySheetTabs")) {
         // Pestaña 1: Interpretación de Negocio y Preguntas Clave
-        if (ImGui::BeginTabItem("🧠 Proposito y Negocio")) {
+        if (ImGui::BeginTabItem("[Negocio] Proposito y Logica")) {
             ImGui::Spacing();
 
             // Propósito en el Negocio
-            ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.60f, 1.0f), "🎯 ¿Que representa en el negocio?");
+            ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.60f, 1.0f), "ROL Y SIGNIFICADO EN EL NEGOCIO:");
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.15f, 0.20f, 0.8f));
             ImGui::BeginChild("PurposeCard", ImVec2(0, 65), true);
             if (!tbl.business_purpose.empty()) {
-                ImGui::TextWrapped("%s", tbl.business_purpose.c_str());
+                MarkdownRenderer::render_formatted_text(tbl.business_purpose);
             } else {
                 ImGui::TextWrapped("Entidad operativa del esquema relacional analizado.");
             }
@@ -236,31 +237,33 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
 
             // Justificación del Rol
             if (!tbl.role_justification.empty()) {
-                ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.30f, 1.0f), "⚖️ Justificacion del Rol Ontologico:");
-                ImGui::TextWrapped("%s", tbl.role_justification.c_str());
+                ImGui::TextColored(ImVec4(0.95f, 0.75f, 0.30f, 1.0f), "JUSTIFICACION DEL ROL ONTOLOGICO:");
+                MarkdownRenderer::render_formatted_text(tbl.role_justification, true);
                 ImGui::Spacing();
             }
 
             // Flujo Operativo de Datos (Entradas y Salidas)
             ImGui::Separator();
-            ImGui::TextColored(ImVec4(0.40f, 0.85f, 1.0f, 1.0f), "🔄 Flujo Operativo de Datos:");
+            ImGui::TextColored(ImVec4(0.40f, 0.85f, 1.0f, 1.0f), "FLUJO OPERATIVO DE DATOS:");
 
-            ImGui::TextDisabled("⬅️ Recibe datos de (Dependencias Clave):");
+            ImGui::TextDisabled("<- Recibe datos de (Dependencias Clave):");
             if (tbl.incoming_business_sources.empty()) {
                 ImGui::BulletText("(Entidad raiz independiente / sin dependencias entrantes)");
             } else {
                 for (const auto& src : tbl.incoming_business_sources) {
-                    ImGui::BulletText("%s", src.c_str());
+                    ImGui::Bullet();
+                    MarkdownRenderer::render_formatted_text(src, true);
                 }
             }
 
             ImGui::Spacing();
-            ImGui::TextDisabled("➡️ Alimenta a (Entidades dependientes):");
+            ImGui::TextDisabled("-> Alimenta a (Entidades dependientes):");
             if (tbl.outgoing_business_targets.empty()) {
                 ImGui::BulletText("(Entidad terminal / sin dependencias salientes directas)");
             } else {
                 for (const auto& tgt : tbl.outgoing_business_targets) {
-                    ImGui::BulletText("%s", tgt.c_str());
+                    ImGui::Bullet();
+                    MarkdownRenderer::render_formatted_text(tgt, true);
                 }
             }
 
@@ -269,13 +272,13 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
 
             // Preguntas Clave de Negocio que Responde
             if (!tbl.business_questions.empty()) {
-                ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.35f, 1.0f), "💡 Preguntas Clave de Negocio que Responde esta Tabla:");
+                ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.35f, 1.0f), "PREGUNTAS CLAVE DE NEGOCIO QUE RESPONDE ESTA TABLA:");
                 ImGui::Spacing();
                 int q_idx = 1;
                 for (const auto& q : tbl.business_questions) {
                     ImGui::TextColored(ImVec4(0.3f, 0.9f, 0.6f, 1.0f), "  %d.", q_idx++);
                     ImGui::SameLine();
-                    ImGui::TextWrapped("%s", q.c_str());
+                    MarkdownRenderer::render_formatted_text(q, true);
                 }
                 ImGui::Spacing();
             }
@@ -283,10 +286,10 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
             // Diagnóstico de Calidad e Integridad
             if (!tbl.quality_insights.empty()) {
                 ImGui::Separator();
-                ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.40f, 1.0f), "🛡️ Diagnostico de Calidad e Integridad:");
+                ImGui::TextColored(ImVec4(0.95f, 0.55f, 0.40f, 1.0f), "DIAGNOSTICO DE CALIDAD E INTEGRIDAD:");
                 for (const auto& qi : tbl.quality_insights) {
                     ImGui::Bullet();
-                    ImGui::TextWrapped("%s", qi.c_str());
+                    MarkdownRenderer::render_formatted_text(qi, true);
                 }
             }
 
@@ -294,7 +297,7 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
         }
 
         // Pestaña 2: Columnas y Tipos Semánticos
-        if (ImGui::BeginTabItem("📊 Columnas y Metricas")) {
+        if (ImGui::BeginTabItem("[Metricas] Columnas y Estadisticas")) {
             if (tbl.columns.empty()) {
                 ImGui::TextDisabled("No hay columnas disponibles.");
             } else {
@@ -367,7 +370,7 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
         }
 
         // Pestaña 3: Auditoría Benford (ImPlot)
-        if (ImGui::BeginTabItem("📈 Auditoria Benford")) {
+        if (ImGui::BeginTabItem("[Benford] Auditoria Forense")) {
             ImGui::Spacing();
             ImGui::TextWrapped("La Ley de Benford modela la distribucion del primer digito significativo en magnitudes economicas y financieras naturales. Permite auditar si los montos provienen de transacciones reales o datos sinteticos.");
             ImGui::Spacing();
@@ -425,7 +428,7 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
         }
 
         // Pestaña 4: Dependencias Foráneas PIND
-        if (ImGui::BeginTabItem("🔗 Relaciones (PIND)")) {
+        if (ImGui::BeginTabItem("[PIND] Dependencias Foraneas")) {
             ImGui::Spacing();
             ImGui::TextDisabled("Dependencias de inclusion probabilistica detectadas para esta tabla:");
             ImGui::Spacing();
@@ -528,6 +531,14 @@ void InspectorView::render_ddl_viewer(const char* title, const model::SemanticAS
         if (ImGui::BeginTabItem("Diccionario de Datos (Markdown)")) {
             const std::string doc = pipeline::DDLGenerator::generate_data_dictionary_markdown(ast);
 
+            static int markdown_view_mode = 0; // 0: Interpretado, 1: Codigo Crudo
+            ImGui::RadioButton("Documento Interpretado", &markdown_view_mode, 0);
+            ImGui::SameLine();
+            ImGui::RadioButton("Codigo Markdown Crudo", &markdown_view_mode, 1);
+            ImGui::SameLine();
+            ImGui::TextDisabled("|");
+            ImGui::SameLine();
+
             if (ImGui::Button("Copiar Markdown al Portapapeles")) {
                 ImGui::SetClipboardText(doc.c_str());
                 toast_message_ = "¡Diccionario Markdown copiado al portapapeles!";
@@ -539,9 +550,21 @@ void InspectorView::render_ddl_viewer(const char* title, const model::SemanticAS
             }
 
             ImGui::Separator();
-            const ImVec2 text_size(0, ImGui::GetContentRegionAvail().y - (toast_timer_ > 0.0f ? 35 : 5));
-            ImGui::InputTextMultiline("##DocView", const_cast<char*>(doc.c_str()), doc.size() + 1,
-                                      text_size, ImGuiInputTextFlags_ReadOnly);
+            const float avail_y = ImGui::GetContentRegionAvail().y - (toast_timer_ > 0.0f ? 35.0f : 5.0f);
+
+            if (markdown_view_mode == 0) {
+                // Modo Interpretado: Documento interactivo con tablas nativas, encabezados y formato
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.10f, 0.12f, 0.16f, 1.0f));
+                if (ImGui::BeginChild("##InterpretedMarkdownDoc", ImVec2(0, avail_y), true)) {
+                    MarkdownRenderer::render_document(doc);
+                }
+                ImGui::EndChild();
+                ImGui::PopStyleColor();
+            } else {
+                // Modo Crudo: Editor de solo lectura
+                ImGui::InputTextMultiline("##DocView", const_cast<char*>(doc.c_str()), doc.size() + 1,
+                                          ImVec2(0, avail_y), ImGuiInputTextFlags_ReadOnly);
+            }
             ImGui::EndTabItem();
         }
 
@@ -573,7 +596,7 @@ void InspectorView::render_ddl_viewer(const char* title, const model::SemanticAS
     if (toast_timer_ > 0.0f) {
         toast_timer_ -= ImGui::GetIO().DeltaTime;
         ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.2f, 0.95f, 0.45f, 1.0f), "✔ %s", toast_message_.c_str());
+        ImGui::TextColored(ImVec4(0.2f, 0.95f, 0.45f, 1.0f), "[OK] %s", toast_message_.c_str());
     }
 
     ImGui::End();
