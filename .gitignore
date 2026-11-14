@@ -32,6 +32,9 @@ docs/
 *.doc
 *.tmp
 
+# Workflows and github folder
+.github/
+
 # Transient analysis and schema outputs in root
 doc_*.md
 schema*.json
