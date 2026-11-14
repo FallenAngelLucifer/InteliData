@@ -2,6 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <random>
+#include <iostream>
 #include <cctype>
 
 namespace intelidata::gui {
@@ -54,8 +55,8 @@ void GraphCanvas::arrange_schema_layout() {
         {"region", {0.0f, 0.25f}},
         {"regions", {0.0f, 0.25f}},
         {"territories", {0.0f, 1.45f}},
-        {"employeeterritories", {1.0f, 0.05f}},
-        {"employees", {1.0f, 1.15f}},
+        {"employeeterritories", {1.0f, 0.25f}},
+        {"employees", {1.0f, 1.25f}},
         {"customers", {1.0f, 2.25f}},
         {"orders", {2.0f, 0.35f}},
         {"orderdetails", {2.0f, 1.65f}},
@@ -67,10 +68,10 @@ void GraphCanvas::arrange_schema_layout() {
     };
 
     std::vector<bool> placed(nodes_.size(), false);
-    const Float32 origin_x = 150.0f;
-    const Float32 origin_y = 120.0f;
-    const Float32 col_spacing = 330.0f;
-    const Float32 row_spacing = 280.0f;
+    const Float32 origin_x = 120.0f;
+    const Float32 origin_y = 100.0f;
+    const Float32 col_spacing = 275.0f;
+    const Float32 row_spacing = 240.0f;
 
     for (Size i = 0; i < nodes_.size(); ++i) {
         std::string lower = nodes_[i].original_name;
@@ -103,6 +104,7 @@ void GraphCanvas::arrange_schema_layout() {
     }
 
     temperature_ = 0.0f;
+    fit_requested_frames_ = 2;
 }
 
 void GraphCanvas::load_from_ast(const model::SemanticAST& ast) {
@@ -112,6 +114,8 @@ void GraphCanvas::load_from_ast(const model::SemanticAST& ast) {
     temperature_ = 100.0f;
     pan_offset_ = ImVec2(0.0f, 0.0f);
     zoom_ = 1.0f;
+    last_canvas_sz_ = ImVec2(0.0f, 0.0f);
+    fit_requested_frames_ = 2;
 
     std::unordered_map<std::string, Size> name_to_idx;
 
@@ -166,8 +170,8 @@ void GraphCanvas::load_from_ast(const model::SemanticAST& ast) {
         }
 
         const size_t visible_cols = std::min<size_t>(node.columns.size(), 8);
-        node.card_width = 260.0f;
-        node.card_height = 36.0f + static_cast<Float32>(visible_cols) * 20.0f + (node.columns.size() > 8 ? 22.0f : 10.0f);
+        node.card_width = 220.0f;
+        node.card_height = std::max(120.0f, 32.0f + static_cast<Float32>(visible_cols) * 19.0f + (node.columns.size() > 8 ? 20.0f : 8.0f));
 
         // Radio proporcional a la gravedad de PageRank para modo red
         node.radius = 24.0f + static_cast<Float32>(node.pagerank_gravity * 50.0f);
@@ -296,9 +300,11 @@ void GraphCanvas::fit_to_screen(Float32 width, Float32 height) {
     const Float32 graph_w = std::max(100.0f, max_x - min_x);
     const Float32 graph_h = std::max(100.0f, max_y - min_y);
 
-    const Float32 scale_x = (width - 60.0f) / graph_w;
-    const Float32 scale_y = (height - 60.0f) / graph_h;
-    zoom_ = std::clamp(std::min(scale_x, scale_y), 0.55f, 1.35f);
+    const Float32 pad_x = (width < 600.0f) ? 40.0f : 70.0f;
+    const Float32 pad_y = (height < 400.0f) ? 35.0f : 60.0f;
+    const Float32 scale_x = (width - pad_x) / graph_w;
+    const Float32 scale_y = (height - pad_y) / graph_h;
+    zoom_ = std::clamp(std::min(scale_x, scale_y), 0.15f, 1.35f);
 
     const Float32 center_x = (min_x + max_x) * 0.5f;
     const Float32 center_y = (min_y + max_y) * 0.5f;
@@ -431,17 +437,21 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     // BARRA DE HERRAMIENTAS SUPERIOR DEL CANVAS
     // ==========================================
     auto same_line_if_fits = [](float needed_w) {
-        if (ImGui::GetContentRegionAvail().x >= needed_w + ImGui::GetStyle().ItemSpacing.x) {
-            ImGui::SameLine();
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        if (ImGui::GetContentRegionAvail().x >= needed_w + spacing) {
+            ImGui::SameLine(0.0f, spacing);
+            return true;
         }
+        return false;
     };
 
-    ImGui::SetNextItemWidth(170.0f);
+    const float avail_tb = ImGui::GetContentRegionAvail().x;
+    ImGui::SetNextItemWidth(std::clamp(avail_tb * 0.22f, 120.0f, 170.0f));
     ImGui::InputTextWithHint("##filter_graph", "Buscar tabla/rol...", search_filter_, sizeof(search_filter_));
 
     // Selector de modo de vista: Esquema Tablas (DSV) vs Grafo de Red (Fuerzas 2D)
-    same_line_if_fits(210.0f);
-    ImGui::SetNextItemWidth(190.0f);
+    same_line_if_fits(185.0f);
+    ImGui::SetNextItemWidth(std::clamp(avail_tb * 0.25f, 140.0f, 185.0f));
     const char* view_modes[] = { "Esquema Tablas (DSV)", "Grafo de Red (Fuerzas 2D)" };
     int cur_vm = (view_mode_ == GraphViewMode::TableSchemaDSV) ? 0 : 1;
     if (ImGui::Combo("##view_mode", &cur_vm, view_modes, IM_ARRAYSIZE(view_modes))) {
@@ -449,8 +459,8 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     }
 
     // Selector de modo de coloración
-    same_line_if_fits(160.0f);
-    ImGui::SetNextItemWidth(150.0f);
+    same_line_if_fits(150.0f);
+    ImGui::SetNextItemWidth(std::clamp(avail_tb * 0.22f, 120.0f, 150.0f));
     const char* color_mode_items[] = { "Cluster Espectral", "Rol Ontologico", "Gravedad PageRank" };
     int current_mode_idx = static_cast<int>(color_mode_);
     if (ImGui::Combo("##color_mode", &current_mode_idx, color_mode_items, IM_ARRAYSIZE(color_mode_items))) {
@@ -459,7 +469,7 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     }
 
     // Controles de física y cámara
-    const float phys_btn_w = ImGui::CalcTextSize("Reanudar Fisica").x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    const float phys_btn_w = ImGui::CalcTextSize(physics_paused_ ? "Reanudar Fisica" : "Pausar Fisica").x + ImGui::GetStyle().FramePadding.x * 2.0f;
     same_line_if_fits(phys_btn_w);
     if (ImGui::Button(physics_paused_ ? "Reanudar Fisica" : "Pausar Fisica")) {
         physics_paused_ = !physics_paused_;
@@ -505,10 +515,14 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     if (canvas_sz.y < 50.0f) canvas_sz.y = height;
     const ImVec2 canvas_p1(canvas_p0.x + canvas_sz.x, canvas_p0.y + canvas_sz.y);
 
-    // Ajustar pan si la ventana cambió de tamaño o primera inicialización
-    if (last_canvas_sz_.x <= 1.0f) {
+    // Reserva del canvas en el layout de ImGui para evitar desbordes de scroll
+    ImGui::InvisibleButton("##GraphCanvasArea", canvas_sz, ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight | ImGuiButtonFlags_MouseButtonMiddle);
+
+    // Ajustar vista y zoom cuando se solicita centrado o cambia la geometría de panels
+    if (fit_requested_frames_ > 0) {
+        --fit_requested_frames_;
         fit_to_screen(canvas_sz.x, canvas_sz.y);
-    } else {
+    } else if (last_canvas_sz_.x > 1.0f) {
         const Float32 delta_w = canvas_sz.x - last_canvas_sz_.x;
         const Float32 delta_h = canvas_sz.y - last_canvas_sz_.y;
         if (std::abs(delta_w) > 0.5f || std::abs(delta_h) > 0.5f) {
@@ -519,6 +533,10 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     last_canvas_sz_ = canvas_sz;
 
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
+
+    // RECORTE ESTRICTO POR HARDWARE SCISSOR: Impide que cualquier elemento salga del canvas
+    draw_list->PushClipRect(canvas_p0, canvas_p1, true);
+
     draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(18, 20, 26, 255));
     draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(45, 50, 62, 255));
 
@@ -584,7 +602,7 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
     // Gestión de Zoom centrado en cursor
     if (is_hovered && io.MouseWheel != 0.0f) {
         const ImVec2 mouse_world = screen_to_world(mouse_pos);
-        zoom_ = std::clamp(zoom_ + io.MouseWheel * 0.12f * zoom_, 0.25f, 3.5f);
+        zoom_ = std::clamp(zoom_ + io.MouseWheel * 0.12f * zoom_, 0.15f, 3.5f);
         pan_offset_.x = (mouse_pos.x - canvas_p0.x) - mouse_world.x * zoom_;
         pan_offset_.y = (mouse_pos.y - canvas_p0.y) - mouse_world.y * zoom_;
     }
@@ -779,8 +797,13 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
             // ===============================================
             // RENDERIZADO MODO TABLA RELACIONAL (ESTILO DSV)
             // ===============================================
-            const Float32 rounding = 6.0f * zoom_;
-            const Float32 header_h = 28.0f * zoom_;
+            const Float32 rounding = 4.0f * zoom_;
+            const Float32 font_h = ImGui::GetFontSize();
+            const Float32 card_w = node.card_width * zoom_;
+            const Float32 header_h = std::clamp(20.0f * zoom_ + 8.0f, 18.0f, 26.0f);
+
+            // Recorte local por tarjeta para que el texto interno no desborde nunca el marco de la tarjeta
+            draw_list->PushClipRect(card_tl, card_br, true);
 
             // Fondo del cuerpo de la tarjeta
             ImU32 body_bg = IM_COL32(22, 26, 36, matches_search ? 245 : 70);
@@ -805,28 +828,33 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
 
             // Título de la tabla en cabecera
             if (zoom_ > 0.15f) {
-                const ImVec2 title_pos(card_tl.x + 8.0f * zoom_, card_tl.y + 6.0f * zoom_);
+                const ImVec2 title_pos(card_tl.x + 5.0f, card_tl.y + (header_h - font_h) * 0.5f);
                 const std::string& display_title = node.original_name.empty() ? node.name : node.original_name;
                 draw_list->AddText(title_pos, IM_COL32(255, 255, 255, 255), display_title.c_str());
 
-                // Badge de rol a la derecha de la cabecera
-                std::string role_tag = "[TBL]";
-                if (node.inferred_role == "Fact_Hub_Transaction") role_tag = "[FACT]";
-                else if (node.inferred_role == "Dimension_Master_Entity") role_tag = "[DIM]";
-                else if (node.inferred_role == "Bridge_Lookup") role_tag = "[REL]";
+                // Badge de rol a la derecha de la cabecera (solo si hay espacio suficiente)
+                if (card_w >= 130.0f) {
+                    std::string role_tag = "[TBL]";
+                    if (node.inferred_role == "Fact_Hub_Transaction") role_tag = "[FACT]";
+                    else if (node.inferred_role == "Dimension_Master_Entity") role_tag = "[DIM]";
+                    else if (node.inferred_role == "Bridge_Lookup") role_tag = "[REL]";
 
-                const ImVec2 tag_sz = ImGui::CalcTextSize(role_tag.c_str());
-                const ImVec2 tag_pos(card_br.x - tag_sz.x - 8.0f * zoom_, card_tl.y + 6.0f * zoom_);
-                draw_list->AddText(tag_pos, IM_COL32(240, 245, 255, 220), role_tag.c_str());
+                    const ImVec2 tag_sz = ImGui::CalcTextSize(role_tag.c_str());
+                    const Float32 tag_pos_x = card_br.x - tag_sz.x - 8.0f;
+                    if (tag_pos_x > title_pos.x + ImGui::CalcTextSize(display_title.c_str()).x + 8.0f) {
+                        draw_list->AddText(ImVec2(tag_pos_x, card_tl.y + (header_h - font_h) * 0.5f), IM_COL32(240, 245, 255, 220), role_tag.c_str());
+                    }
+                }
             }
 
-            // Lista de columnas
-            if (zoom_ > 0.20f) {
+            // Contenido del cuerpo de la tarjeta
+            const Float32 body_h = card_br.y - (card_tl.y + header_h);
+            if (zoom_ > 0.45f && body_h >= 45.0f) {
                 const size_t visible_cols = std::min<size_t>(node.columns.size(), 8);
-                const Float32 row_h = 19.0f * zoom_;
-                Float32 cur_y = card_tl.y + header_h + 4.0f * zoom_;
+                const Float32 row_h = std::max(16.0f, 19.0f * zoom_);
+                Float32 cur_y = card_tl.y + header_h + 4.0f;
 
-                for (size_t c_idx = 0; c_idx < visible_cols; ++c_idx) {
+                for (size_t c_idx = 0; c_idx < visible_cols && (cur_y + row_h <= card_br.y); ++c_idx) {
                     const auto& col = node.columns[c_idx];
 
                     // Indicador PK / FK
@@ -863,11 +891,22 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
                     cur_y += row_h;
                 }
 
-                if (node.columns.size() > visible_cols) {
+                if (node.columns.size() > visible_cols && (cur_y + 14.0f <= card_br.y)) {
                     std::string extra_str = "+ " + std::to_string(node.columns.size() - visible_cols) + " cols...";
-                    draw_list->AddText(ImVec2(card_tl.x + 20.0f * zoom_, cur_y), IM_COL32(150, 165, 185, 180), extra_str.c_str());
+                    draw_list->AddText(ImVec2(card_tl.x + 16.0f, cur_y), IM_COL32(150, 165, 185, 180), extra_str.c_str());
                 }
+            } else if (body_h >= 12.0f) {
+                // Modo resumen compacto y armónico a zoom medio o bajo
+                std::string summary_str = (card_w >= 90.0f)
+                    ? (std::to_string(node.columns.size()) + " columnas")
+                    : (std::to_string(node.columns.size()) + " cols");
+                const ImVec2 sz = ImGui::CalcTextSize(summary_str.c_str());
+                const ImVec2 s_pos(card_tl.x + (card_w - sz.x) * 0.5f,
+                                   card_tl.y + header_h + (body_h - sz.y) * 0.5f);
+                draw_list->AddText(s_pos, IM_COL32(175, 190, 210, 220), summary_str.c_str());
             }
+
+            draw_list->PopClipRect();
         } else {
             // ===============================================
             // RENDERIZADO MODO GRAFO DE RED (CIRCULAR 2D)
@@ -917,6 +956,9 @@ void GraphCanvas::render(const char* title, Float32 width, Float32 height) {
             ImGui::EndTooltip();
         }
     }
+
+    // Cerrar recorte de hardware del canvas
+    draw_list->PopClipRect();
 
     ImGui::End();
 }

@@ -80,11 +80,14 @@ void setup_default_dock_layout(ImGuiID dockspace_id, const ImVec2& size, const s
     ImGuiID dock_bottom = 0;
     ImGuiID dock_right_bottom = 0;
 
-    // 1. División vertical derecha (42% de ancho para Inspector y Exportador)
-    dock_right = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, 0.42f, nullptr, &dock_main);
+    const float right_ratio = (size.x < 1350.0f) ? 0.35f : 0.40f;
+    const float bottom_ratio = (size.y <= 650.0f) ? 0.52f : ((size.y < 850.0f) ? 0.45f : 0.38f);
 
-    // 2. División horizontal izquierda inferior (38% de alto para datos crudos)
-    dock_bottom = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Down, 0.38f, nullptr, &dock_main);
+    // 1. División vertical derecha (35-42% de ancho para Inspector y Exportador)
+    dock_right = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Right, right_ratio, nullptr, &dock_main);
+
+    // 2. División horizontal izquierda inferior (38-44% de alto para datos crudos y analítica)
+    dock_bottom = ImGui::DockBuilderSplitNode(dock_main, ImGuiDir_Down, bottom_ratio, nullptr, &dock_main);
 
     // 3. División horizontal derecha inferior (45% de alto para DDL y exportación)
     dock_right_bottom = ImGui::DockBuilderSplitNode(dock_right, ImGuiDir_Down, 0.45f, nullptr, &dock_right);
@@ -171,15 +174,20 @@ int main(int argc, char* argv[]) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    int win_width = 1600;
+    int win_height = 1000;
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "--headless" || arg == "--screenshot") {
             glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-            break;
+        } else if (arg == "--width" && i + 1 < argc) {
+            win_width = std::max(720, std::stoi(argv[++i]));
+        } else if (arg == "--height" && i + 1 < argc) {
+            win_height = std::max(480, std::stoi(argv[++i]));
         }
     }
 
-    GLFWwindow* window = glfwCreateWindow(1600, 1000, "InteliData - Reconstruccion Ontologica Bare-Metal", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(win_width, win_height, "InteliData - Reconstruccion Ontologica Bare-Metal", nullptr, nullptr);
     if (!window) {
         glfwTerminate();
         return 1;
@@ -379,8 +387,10 @@ int main(int argc, char* argv[]) {
             solo_window = argv[++i];
         } else if (arg == "--show-data-hub") {
             force_show_data_hub = true;
-        } else if (arg == "--exit-after-screenshot") {
-            exit_after_screenshot = true;
+        } else if (arg == "--headless") {
+            // Procesado para inicialización de GLFW
+        } else if ((arg == "--width" || arg == "--height") && i + 1 < argc) {
+            ++i; // Saltar el valor de dimensión para que no se capture como initial_input
         } else if (arg == "--input" && i + 1 < argc) {
             initial_input = argv[++i];
         } else if (!arg.starts_with("--") && initial_input.empty()) {
@@ -534,7 +544,7 @@ int main(int argc, char* argv[]) {
                     }
                 }
                 if (ImGui::MenuItem("Centrar Grafo en Pantalla")) {
-                    canvas.fit_to_screen(800.0f, 600.0f);
+                    canvas.request_fit();
                 }
                 ImGui::EndMenu();
             }
@@ -876,7 +886,7 @@ int main(int argc, char* argv[]) {
 
                 ImGui::SameLine();
                 if (ImGui::Button(is_wide ? "  [Centrar Grafo]  " : (is_mid ? "  [Centrar]  " : "Centrar"))) {
-                    canvas.fit_to_screen(dockspace_size.x * 0.62f, dockspace_size.y * 0.62f);
+                    canvas.request_fit();
                 }
 
                 ImGui::SameLine();
@@ -900,16 +910,19 @@ int main(int argc, char* argv[]) {
                 // Información activa adaptativa (solo si cabe a la derecha sin solaparse)
                 const float info_full_w = 340.0f;
                 const float info_compact_w = 140.0f;
-                const float avail_toolbar = ImGui::GetContentRegionAvail().x;
-                if (avail_toolbar >= info_full_w + 10.0f) {
-                    ImGui::SameLine(ImGui::GetWindowWidth() - info_full_w);
+                const float last_x = ImGui::GetItemRectMax().x;
+                const float target_full_x = ImGui::GetWindowWidth() - info_full_w - ImGui::GetStyle().WindowPadding.x;
+                const float target_compact_x = ImGui::GetWindowWidth() - info_compact_w - ImGui::GetStyle().WindowPadding.x;
+
+                if (target_full_x > last_x + 30.0f) {
+                    ImGui::SameLine(target_full_x);
                     ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Activo:");
                     ImGui::SameLine();
                     ImGui::TextUnformatted(current_dataset_label.c_str());
                     ImGui::SameLine();
                     ImGui::TextDisabled("(%zu tablas, %zu rel.)", current_ast.tables.size(), current_ast.relationships.size());
-                } else if (avail_toolbar >= info_compact_w + 10.0f) {
-                    ImGui::SameLine(ImGui::GetWindowWidth() - info_compact_w);
+                } else if (target_compact_x > last_x + 20.0f) {
+                    ImGui::SameLine(target_compact_x);
                     ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s", current_dataset_label.c_str());
                 }
             }
@@ -985,7 +998,7 @@ int main(int argc, char* argv[]) {
                     setup_default_dock_layout(dockspace_id, dockspace_size, solo_window);
                     needs_dock_setup = false;
                     last_dockspace_size = dockspace_size;
-                    canvas.fit_to_screen(dockspace_size.x * 0.62f, dockspace_size.y * 0.62f);
+                    canvas.request_fit();
                 } else if (last_dockspace_size.x > 50.0f && last_dockspace_size.y > 50.0f) {
                     // Escalar proporcionalmente todos los paneles ante cualquier cambio de resolución
                     const float delta_x = std::abs(dockspace_size.x - last_dockspace_size.x);

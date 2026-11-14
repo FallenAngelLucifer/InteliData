@@ -19,20 +19,49 @@ namespace {
 
 void render_metric_card(const char* title, const char* value, const char* subtitle, const ImVec4& accent_col) {
     ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.12f, 0.14f, 0.18f, 1.0f));
-    ImGui::BeginChild(title, ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 3.0f));
+    std::string child_id = "##MetricCard_" + std::string(title);
+    ImGui::BeginChild(child_id.c_str(), ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_AutoResizeY);
     ImGui::TextDisabled("%s", title);
     ImGui::TextColored(accent_col, "%s", value);
-    if (subtitle && subtitle[0] != '\0') {
+    if (subtitle && subtitle[0] != '\0' && ImGui::GetMainViewport()->Size.y >= 700.0f && ImGui::GetWindowHeight() >= 240.0f) {
         ImGui::TextDisabled("%s", subtitle);
     }
     ImGui::EndChild();
+    ImGui::PopStyleVar();
     ImGui::PopStyleColor();
 }
 
+bool render_flow_checkbox(const char* label, bool* v) {
+    const float item_w = ImGui::CalcTextSize(label).x + ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x * 2.0f;
+    const float spacing = ImGui::GetStyle().ItemSpacing.x;
+    if (ImGui::GetContentRegionAvail().x >= item_w + spacing) {
+        ImGui::SameLine(0.0f, spacing);
+    }
+    return ImGui::Checkbox(label, v);
+}
+
+const char* get_responsive_y_label(const char* full_label, const char* short_label, float plot_h) {
+    return (plot_h < 220.0f) ? short_label : full_label;
+}
+
 int calculate_responsive_columns(float avail_w) {
-    if (avail_w < 480.0f) return 1;
-    if (avail_w < 780.0f) return 2;
+    if (avail_w < 400.0f) return 1;
+    if (avail_w < 740.0f) return 2;
     return 4;
+}
+
+float calculate_responsive_plot_height(float avail_y, float avail_w, int num_cards = 4) {
+    const int cols = calculate_responsive_columns(avail_w);
+    const int rows = (num_cards + cols - 1) / cols;
+    const bool is_compact = (ImGui::GetMainViewport()->Size.y < 700.0f || ImGui::GetWindowHeight() < 240.0f);
+    const float card_row_h = is_compact ? 36.0f : 54.0f;
+    const float needed_cards_h = static_cast<float>(rows) * card_row_h + 8.0f;
+    const float max_plot_h = avail_y - needed_cards_h;
+    if (avail_y < 170.0f) {
+        return std::clamp(max_plot_h, 75.0f, 115.0f);
+    }
+    return std::max(95.0f, max_plot_h);
 }
 
 } // namespace
@@ -372,7 +401,7 @@ void AnalyticsDashboardView::render(const char* title, const model::SemanticAST&
         ImGui::Separator();
         ImGui::Spacing();
 
-        if (ImGui::BeginTabBar("##AnalyticsMainTabs", ImGuiTabBarFlags_Reorderable)) {
+        if (ImGui::BeginTabBar("##AnalyticsMainTabs", ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyScroll)) {
             const ImGuiTabItemFlags t0_flags = (requested_tab_ == 0) ? ImGuiTabItemFlags_SetSelected : 0;
             if (ImGui::BeginTabItem("  1. Serie Temporal (Tiempo)  ", nullptr, t0_flags)) {
                 selected_tab_ = 0;
@@ -445,22 +474,43 @@ void AnalyticsDashboardView::render(const char* title, const model::SemanticAST&
 }
 
 void AnalyticsDashboardView::render_toolbar() {
+    auto same_line_if_fits = [](float needed_w) {
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        if (ImGui::GetContentRegionAvail().x >= needed_w + spacing) {
+            ImGui::SameLine(0.0f, spacing);
+            return true;
+        }
+        return false;
+    };
+
     // Fila 1: Botones de Acción Primarios
-    if (ImGui::Button("  [Guardar Graficas del Reporte]  ")) {
+    const float avail_tb_w = ImGui::GetContentRegionAvail().x;
+    const char* save_btn_lbl = (avail_tb_w < 540.0f) ? "  [Graficas]  " : "  [Guardar Graficas del Reporte]  ";
+    if (ImGui::Button(save_btn_lbl)) {
         save_report_charts();
     }
-    ImGui::SameLine();
-    if (ImGui::Button("  [Auto-Ajustar / Reset]  ")) {
+
+    const char* fit_btn_lbl = (avail_tb_w < 540.0f) ? "  [Auto-Ajustar]  " : "  [Auto-Ajustar / Reset]  ";
+    const float btn2_w = ImGui::CalcTextSize(fit_btn_lbl).x + ImGui::GetStyle().FramePadding.x * 2.0f;
+    same_line_if_fits(btn2_w);
+    if (ImGui::Button(fit_btn_lbl)) {
         auto_fit_requested_ = true;
     }
-    ImGui::SameLine();
+
+    const float chk_w = ImGui::CalcTextSize("Crosshairs").x + ImGui::GetFrameHeight() + ImGui::GetStyle().ItemInnerSpacing.x * 2.0f;
+    same_line_if_fits(chk_w);
     ImGui::Checkbox("Crosshairs", &show_crosshairs_);
 
-    ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.2f, 0.85f, 1.0f, 1.0f), "[INTERACTIVO]");
+    if (avail_tb_w >= 480.0f) {
+        const float tag_w = ImGui::CalcTextSize("[INTERACTIVO]").x;
+        same_line_if_fits(tag_w);
+        ImGui::TextColored(ImVec4(0.2f, 0.85f, 1.0f, 1.0f), "[INTERACTIVO]");
+    }
 
-    // Fila 2: Guía de Navegación compacta (sin solapamiento)
-    ImGui::TextDisabled("Navegacion: Rueda = Zoom In/Out | Clic Derecho/Medio sostenido = Desplazar | Doble clic = Reset");
+    // Fila 2: Guía de Navegación compacta (solo en pantallas con altura suficiente)
+    if (ImGui::GetWindowHeight() >= 300.0f) {
+        ImGui::TextWrapped("Navegacion: Rueda = Zoom In/Out | Clic Derecho/Medio sostenido = Desplazar | Doble clic = Reset");
+    }
 
     if (!status_message_.empty()) {
         ImGui::Spacing();
@@ -516,16 +566,12 @@ void AnalyticsDashboardView::save_report_charts(const std::string& target_dir) {
 }
 
 void AnalyticsDashboardView::render_time_series_tab() {
-    // Controles específicos de la serie temporal
+    // Controles específicos de la serie temporal con flujo adaptativo
     ImGui::Checkbox("Venta Neta ($k)", &show_net_);
-    ImGui::SameLine();
-    ImGui::Checkbox("Venta Bruta ($k)", &show_gross_);
-    ImGui::SameLine();
-    ImGui::Checkbox("Fletes ($k)", &show_freight_);
-    ImGui::SameLine();
-    ImGui::Checkbox("Descuentos ($k)", &show_discount_);
-    ImGui::SameLine();
-    ImGui::Checkbox("Sombreado Área Neta", &show_area_fill_);
+    render_flow_checkbox("Venta Bruta ($k)", &show_gross_);
+    render_flow_checkbox("Fletes ($k)", &show_freight_);
+    render_flow_checkbox("Descuentos ($k)", &show_discount_);
+    render_flow_checkbox("Sombreado Área Neta", &show_area_fill_);
 
     ImPlotFlags plot_flags = ImPlotFlags_None;
     if (show_crosshairs_) plot_flags |= ImPlotFlags_Crosshairs;
@@ -537,14 +583,28 @@ void AnalyticsDashboardView::render_time_series_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
-    const float plot_h = std::max(130.0f, ImGui::GetContentRegionAvail().y - 88.0f);
+    const float avail_y = ImGui::GetContentRegionAvail().y;
+    const float plot_h = calculate_responsive_plot_height(avail_y, ImGui::GetContentRegionAvail().x, 4);
     const ImVec2 plot_size(-1, plot_h);
     if (ImPlot::BeginPlot("##MonthlyTimeSeriesPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("Periodo Operativo Mensual (Año-Mes)", "Importe Monetario ($k USD)", x_flags, y_flags);
+        ImPlot::SetupAxes((ImGui::GetContentRegionAvail().x < 600.0f ? "Periodo (Año-Mes)" : "Periodo Operativo Mensual (Año-Mes)"),
+                          get_responsive_y_label("Importe Monetario ($k USD)", "$k USD", plot_h), x_flags, y_flags);
 
+        // Generación dinámica y responsive de ticks según ancho real del gráfico para evitar colisiones
+        const float plot_width = ImGui::GetContentRegionAvail().x;
+        const int max_ticks = std::max(3, static_cast<int>(plot_width / 80.0f));
+        const int step = std::max(1, static_cast<int>(std::ceil(static_cast<float>(time_labels_.size()) / max_ticks)));
+        std::vector<double> tick_x;
         std::vector<const char*> c_labels;
-        for (const auto& s : time_labels_) c_labels.push_back(s.c_str());
-        ImPlot::SetupAxisTicks(ImAxis_X1, time_x_.data(), static_cast<int>(time_labels_.size()), c_labels.data());
+        for (size_t i = 0; i < time_labels_.size(); i += step) {
+            tick_x.push_back(time_x_[i]);
+            c_labels.push_back(time_labels_[i].c_str());
+        }
+        if (!time_labels_.empty() && (time_labels_.size() - 1) % step != 0) {
+            tick_x.push_back(time_x_.back());
+            c_labels.push_back(time_labels_.back().c_str());
+        }
+        ImPlot::SetupAxisTicks(ImAxis_X1, tick_x.data(), static_cast<int>(tick_x.size()), c_labels.data());
 
         const int count = static_cast<int>(time_x_.size());
 
@@ -608,10 +668,13 @@ void AnalyticsDashboardView::render_time_series_tab() {
 }
 
 void AnalyticsDashboardView::render_categories_tab() {
-    ImGui::TextDisabled("Haga zoom o arrastre para examinar cada categoria de producto y su margen:");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(220);
-    if (ImGui::Combo("Ordenar Por", &category_sort_mode_, "Venta Neta Descendente\0Merma % Descendente\0")) {
+    const float avail_w_cat = ImGui::GetContentRegionAvail().x;
+    if (avail_w_cat >= 540.0f) {
+        ImGui::TextDisabled("Categorias y Margen:");
+        ImGui::SameLine();
+    }
+    ImGui::SetNextItemWidth(std::min(185.0f, avail_w_cat * 0.45f));
+    if (ImGui::Combo("##SortCategories", &category_sort_mode_, "Venta Neta Descendente\0Merma % Descendente\0")) {
         auto_fit_requested_ = true;
     }
 
@@ -623,13 +686,24 @@ void AnalyticsDashboardView::render_categories_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
-    const float cat_plot_h = std::max(130.0f, ImGui::GetContentRegionAvail().y - 88.0f);
+    const float avail_y2 = ImGui::GetContentRegionAvail().y;
+    const float cat_plot_h = calculate_responsive_plot_height(avail_y2, ImGui::GetContentRegionAvail().x, 4);
     const ImVec2 plot_size(-1, cat_plot_h);
     if (ImPlot::BeginPlot("##CategoriesPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("Categoria de Producto", "Venta Neta ($k USD)", x_flags, y_flags);
+        ImPlot::SetupAxes("Categoria de Producto", get_responsive_y_label("Venta Neta ($k USD)", "$k USD", cat_plot_h), x_flags, y_flags);
 
+        const float pw = ImGui::GetContentRegionAvail().x;
         std::vector<const char*> c_labels;
-        for (const auto& s : cat_labels_) c_labels.push_back(s.c_str());
+        static const char* short_cat_labels[] = {
+            "Bev.", "Dairy", "Conf.", "Meat", "Sea.", "Cond.", "Prod.", "Grains"
+        };
+        for (size_t i = 0; i < cat_labels_.size(); ++i) {
+            if (pw < 560.0f && i < 8) {
+                c_labels.push_back(short_cat_labels[i]);
+            } else {
+                c_labels.push_back(cat_labels_[i].c_str());
+            }
+        }
         ImPlot::SetupAxisTicks(ImAxis_X1, cat_x_.data(), static_cast<int>(cat_labels_.size()), c_labels.data());
 
         const int count = static_cast<int>(cat_x_.size());
@@ -666,7 +740,9 @@ void AnalyticsDashboardView::render_categories_tab() {
 }
 
 void AnalyticsDashboardView::render_geography_tab() {
-    ImGui::TextDisabled("Penetracion en los 10 principales mercados internacionales y comparativa de fletes logísticos:");
+    if (ImGui::GetContentRegionAvail().x >= 540.0f) {
+        ImGui::TextDisabled("Penetracion en los 10 principales mercados y fletes:");
+    }
 
     ImPlotFlags plot_flags = show_crosshairs_ ? ImPlotFlags_Crosshairs : ImPlotFlags_None;
     ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
@@ -676,13 +752,24 @@ void AnalyticsDashboardView::render_geography_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
-    const float geo_plot_h = std::max(130.0f, ImGui::GetContentRegionAvail().y - 88.0f);
+    const float avail_y3 = ImGui::GetContentRegionAvail().y;
+    const float geo_plot_h = calculate_responsive_plot_height(avail_y3, ImGui::GetContentRegionAvail().x, 4);
     const ImVec2 plot_size(-1, geo_plot_h);
     if (ImPlot::BeginPlot("##GeographyPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("Pais Destino", "Importe ($k USD)", x_flags, y_flags);
+        ImPlot::SetupAxes("Pais Destino", get_responsive_y_label("Importe ($k USD)", "$k USD", geo_plot_h), x_flags, y_flags);
 
+        const float pw = ImGui::GetContentRegionAvail().x;
         std::vector<const char*> c_labels;
-        for (const auto& s : country_labels_) c_labels.push_back(s.c_str());
+        static const char* short_countries[] = {
+            "USA", "DEU", "AUT", "BRA", "FRA", "GBR", "VEN", "SWE", "CAN", "IRL"
+        };
+        for (size_t i = 0; i < country_labels_.size(); ++i) {
+            if (pw < 560.0f && i < 10) {
+                c_labels.push_back(short_countries[i]);
+            } else {
+                c_labels.push_back(country_labels_[i].c_str());
+            }
+        }
         ImPlot::SetupAxisTicks(ImAxis_X1, country_x_.data(), static_cast<int>(country_labels_.size()), c_labels.data());
 
         const int count = static_cast<int>(country_x_.size());
@@ -718,7 +805,9 @@ void AnalyticsDashboardView::render_geography_tab() {
 }
 
 void AnalyticsDashboardView::render_waterfall_tab() {
-    ImGui::TextDisabled("Conciliacion cuadruple formal de la cartera de cuentas por cobrar en cascada interactiva:");
+    if (ImGui::GetContentRegionAvail().x >= 540.0f) {
+        ImGui::TextDisabled("Conciliacion cuadruple en cascada interactiva:");
+    }
 
     ImPlotFlags plot_flags = show_crosshairs_ ? ImPlotFlags_Crosshairs : ImPlotFlags_None;
     ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
@@ -728,13 +817,24 @@ void AnalyticsDashboardView::render_waterfall_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
-    const float wf_plot_h = std::max(130.0f, ImGui::GetContentRegionAvail().y - 88.0f);
+    const float avail_y4 = ImGui::GetContentRegionAvail().y;
+    const float wf_plot_h = calculate_responsive_plot_height(avail_y4, ImGui::GetContentRegionAvail().x, 4);
     const ImVec2 plot_size(-1, wf_plot_h);
     if (ImPlot::BeginPlot("##WaterfallPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("Fase de Conciliacion", "Monto Acumulado ($k USD)", x_flags, y_flags);
+        ImPlot::SetupAxes("Fase de Conciliacion", get_responsive_y_label("Monto Acumulado ($k USD)", "$k USD", wf_plot_h), x_flags, y_flags);
 
+        const float pw = ImGui::GetContentRegionAvail().x;
         std::vector<const char*> c_labels;
-        for (const auto& s : waterfall_labels_) c_labels.push_back(s.c_str());
+        static const char* short_wf[] = {
+            "Bruta", "(-)Desc", "(=)Neta", "(+)Fletes", "(=)Total"
+        };
+        for (size_t i = 0; i < waterfall_labels_.size(); ++i) {
+            if (pw < 500.0f && i < 5) {
+                c_labels.push_back(short_wf[i]);
+            } else {
+                c_labels.push_back(waterfall_labels_[i].c_str());
+            }
+        }
         ImPlot::SetupAxisTicks(ImAxis_X1, waterfall_x_.data(), static_cast<int>(waterfall_labels_.size()), c_labels.data());
 
         const int count = static_cast<int>(waterfall_x_.size());
@@ -804,10 +904,12 @@ void AnalyticsDashboardView::render_benford_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
+    const float avail_w5 = ImGui::GetContentRegionAvail().x;
     const float benford_plot_h = std::clamp(ImGui::GetContentRegionAvail().y * 0.40f, 150.0f, 300.0f);
     const ImVec2 plot_size(-1, benford_plot_h);
     if (ImPlot::BeginPlot("##BenfordPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("Primer Digito Significativo (d)", "Frecuencia Relativa (%)", x_flags, y_flags);
+        ImPlot::SetupAxes((avail_w5 < 600.0f ? "Digito (d)" : "Primer Digito Significativo (d)"),
+                          get_responsive_y_label("Frecuencia Relativa (%)", "% Frecuencia", benford_plot_h), x_flags, y_flags);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.5, 9.5);
         ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 35.0);
 
@@ -870,7 +972,6 @@ void AnalyticsDashboardView::render_benford_tab() {
                            (benford_mad_ <= 0.015 ? "MAD Marginal <= 0.015" : "MAD Critica > 0.015"));
     ImVec4 diag_col = (benford_mad_ <= 0.012) ? ImVec4(0.3f, 0.95f, 0.5f, 1.0f) : ImVec4(0.95f, 0.45f, 0.35f, 1.0f);
 
-    const float avail_w5 = ImGui::GetContentRegionAvail().x;
     ImGui::Columns(calculate_responsive_columns(avail_w5), "##BenfordSummaryCols", false);
     render_metric_card("Estadistico Chi-Cuadrado", chi_buf, "8 grados de libertad", ImVec4(0.2f, 0.85f, 1.0f, 1.0f));
     ImGui::NextColumn();
@@ -895,7 +996,10 @@ void AnalyticsDashboardView::render_benford_tab() {
 }
 
 void AnalyticsDashboardView::render_lorenz_pareto_tab() {
-    ImGui::TextDisabled("Curva de concentracion de ingresos acumulados por cliente (Pareto 80/20 y exposicion de riesgo):");
+    const float avail_w6 = ImGui::GetContentRegionAvail().x;
+    if (avail_w6 >= 540.0f) {
+        ImGui::TextDisabled("Curva de concentracion de ingresos (Pareto 80/20):");
+    }
 
     ImPlotFlags plot_flags = show_crosshairs_ ? ImPlotFlags_Crosshairs : ImPlotFlags_None;
     ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
@@ -905,10 +1009,14 @@ void AnalyticsDashboardView::render_lorenz_pareto_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
-    const float lorenz_plot_h = std::max(130.0f, ImGui::GetContentRegionAvail().y - 88.0f);
+    const float avail_y6 = ImGui::GetContentRegionAvail().y;
+    const float lorenz_plot_h = calculate_responsive_plot_height(avail_y6, avail_w6, 4);
     const ImVec2 plot_size(-1, lorenz_plot_h);
     if (ImPlot::BeginPlot("##LorenzPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("% Acumulado de Clientes", "% Acumulado de Ventas Netas", x_flags, y_flags);
+        // Posicionar leyenda en el cuadrante inferior derecho (área vacía bajo la diagonal)
+        ImPlot::SetupLegend(ImPlotLocation_SouthEast);
+        ImPlot::SetupAxes((avail_w6 < 600.0f ? "% Clientes" : "% Acumulado de Clientes"),
+                          get_responsive_y_label("% Acumulado de Ventas Netas", "% Ventas", lorenz_plot_h), x_flags, y_flags);
         ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, 100.0);
         ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0, 105.0);
 
@@ -941,7 +1049,7 @@ void AnalyticsDashboardView::render_lorenz_pareto_tab() {
         spec_top5.MarkerFillColor = ImVec4(0.85f, 0.15f, 0.15f, 1.0f);
         spec_top5.MarkerLineColor = ImVec4(0.85f, 0.15f, 0.15f, 1.0f);
         ImPlot::PlotScatter("Top 5 Clientes", &top5_x, &top5_y, 1, spec_top5);
-        ImPlot::Annotation(top5_x, top5_y, ImVec4(0.85f, 0.15f, 0.15f, 1.0f), ImVec2(15, -20), true,
+        ImPlot::Annotation(top5_x, top5_y, ImVec4(0.85f, 0.15f, 0.15f, 1.0f), ImVec2(20, -15), true,
                            "Top 5 Clientes (5.62%%)\nConcentran 33.23%% ($420.6k)");
 
         // Umbral Pareto 80/20 empírico (Cliente #34: 38.20% clientes -> 80.07% ventas, 38.12% interpolado)
@@ -960,7 +1068,6 @@ void AnalyticsDashboardView::render_lorenz_pareto_tab() {
     }
     auto_fit_requested_ = false;
 
-    const float avail_w6 = ImGui::GetContentRegionAvail().x;
     ImGui::Columns(calculate_responsive_columns(avail_w6), "##LorenzSummaryCols", false);
     render_metric_card("Top 5 Clientes", "33.23% ($420.6k USD)", "QUICK, ERNSH, SAVEA...", ImVec4(0.95f, 0.25f, 0.25f, 1.0f));
     ImGui::NextColumn();
@@ -973,7 +1080,15 @@ void AnalyticsDashboardView::render_lorenz_pareto_tab() {
 }
 
 void AnalyticsDashboardView::render_products_tab() {
-    ImGui::TextDisabled("Ranking de los 10 productos líderes por facturación neta acumulada en cartera (USD):");
+    const float avail_w7 = ImGui::GetContentRegionAvail().x;
+    ImGui::TextDisabled("Ranking de Productos:");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(100.0f);
+    int current_mode = (prod_ranking_count_ == 5) ? 1 : 0;
+    if (ImGui::Combo("##ProdRankCombo", &current_mode, "Top 10\0Top 5\0")) {
+        prod_ranking_count_ = (current_mode == 1) ? 5 : 10;
+        auto_fit_requested_ = true;
+    }
 
     ImPlotFlags plot_flags = show_crosshairs_ ? ImPlotFlags_Crosshairs : ImPlotFlags_None;
     ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
@@ -983,38 +1098,45 @@ void AnalyticsDashboardView::render_products_tab() {
         y_flags |= ImPlotAxisFlags_AutoFit;
     }
 
-    const float prod_plot_h = std::max(130.0f, ImGui::GetContentRegionAvail().y - 88.0f);
+    const float avail_y7 = ImGui::GetContentRegionAvail().y;
+    const float prod_plot_h = calculate_responsive_plot_height(avail_y7, avail_w7, 4);
+    const int effective_n = (prod_plot_h < 200.0f || prod_ranking_count_ == 5) ? 5 : 10;
     const ImVec2 plot_size(-1, prod_plot_h);
     if (ImPlot::BeginPlot("##ProductsPlot", plot_size, plot_flags)) {
-        ImPlot::SetupAxes("Facturacion Neta ($k USD)", "Producto", x_flags, y_flags);
+        ImPlot::SetupAxes(get_responsive_y_label("Facturacion Neta ($k USD)", "$k USD", prod_plot_h), "Producto", x_flags, y_flags);
 
         std::vector<const char*> p_labels;
-        for (const auto& s : prod_labels_) p_labels.push_back(s.c_str());
-        std::vector<double> y_pos(prod_labels_.size());
-        for (size_t i = 0; i < prod_labels_.size(); ++i) {
-            y_pos[i] = static_cast<double>(prod_labels_.size() - 1 - i);
+        for (int i = 0; i < effective_n && i < static_cast<int>(prod_labels_.size()); ++i) {
+            p_labels.push_back(prod_labels_[i].c_str());
+        }
+        std::vector<double> y_pos(p_labels.size());
+        for (size_t i = 0; i < p_labels.size(); ++i) {
+            y_pos[i] = static_cast<double>(p_labels.size() - 1 - i);
         }
         std::reverse(p_labels.begin(), p_labels.end());
-        ImPlot::SetupAxisTicks(ImAxis_Y1, y_pos.data(), static_cast<int>(prod_labels_.size()), p_labels.data());
+        ImPlot::SetupAxisTicks(ImAxis_Y1, y_pos.data(), static_cast<int>(p_labels.size()), p_labels.data());
 
-        const int count = static_cast<int>(prod_labels_.size());
-        std::vector<double> x_vals = prod_net_k_;
+        std::vector<double> x_vals;
+        for (int i = 0; i < effective_n && i < static_cast<int>(prod_net_k_.size()); ++i) {
+            x_vals.push_back(prod_net_k_[i]);
+        }
         std::reverse(x_vals.begin(), x_vals.end());
 
         ImPlotSpec spec_bars;
         spec_bars.FillColor = ImVec4(0.12f, 0.48f, 0.42f, 0.9f);
         spec_bars.Flags = ImPlotBarsFlags_Horizontal;
-        ImPlot::PlotBars("Venta Neta ($k USD)", x_vals.data(), y_pos.data(), count, 0.55, spec_bars);
+        ImPlot::PlotBars("Venta Neta ($k USD)", x_vals.data(), y_pos.data(), static_cast<int>(x_vals.size()), 0.55, spec_bars);
 
         // Anotación en el producto líder
-        ImPlot::Annotation(141.40, y_pos.back(), ImVec4(0.2f, 0.85f, 1.0f, 1.0f), ImVec2(-25, -20), true,
-                           "Producto Estrella: Cote de Blaye\n$141,396.74 USD (11.17%%)");
+        if (!y_pos.empty()) {
+            ImPlot::Annotation(141.40, y_pos.back(), ImVec4(0.2f, 0.85f, 1.0f, 1.0f), ImVec2(-25, -20), true,
+                               "Producto Estrella: Cote de Blaye\n$141,396.74 USD (11.17%%)");
+        }
 
         ImPlot::EndPlot();
     }
     auto_fit_requested_ = false;
 
-    const float avail_w7 = ImGui::GetContentRegionAvail().x;
     ImGui::Columns(calculate_responsive_columns(avail_w7), "##ProdSummaryCols", false);
     render_metric_card("Producto Líder Absoluto", "Cote de Blaye ($141.4k)", "11.17% de facturación global", ImVec4(0.2f, 0.85f, 1.0f, 1.0f));
     ImGui::NextColumn();
@@ -1027,23 +1149,41 @@ void AnalyticsDashboardView::render_products_tab() {
 }
 
 void AnalyticsDashboardView::render_association_rules_tab() {
-    // 1. Controles y Sliders Interactivos
-    ImGui::SetNextItemWidth(130.0f);
-    ImGui::SliderFloat("Soporte Min (%)", &min_support_filter_, 0.2f, 2.0f, "%.2f%%");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(130.0f);
-    ImGui::SliderFloat("Confianza Min (%)", &min_confidence_filter_, 5.0f, 30.0f, "%.1f%%");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(120.0f);
-    ImGui::SliderFloat("Lift Min (x)", &min_lift_filter_, 1.0f, 8.0f, "%.1fx");
-    ImGui::SameLine();
-    if (ImGui::Button("Reset Filtros")) {
+    auto same_line_flow = [](float needed_w) {
+        const float spacing = ImGui::GetStyle().ItemSpacing.x;
+        if (ImGui::GetContentRegionAvail().x >= needed_w + spacing) {
+            ImGui::SameLine(0.0f, spacing);
+            return true;
+        }
+        return false;
+    };
+
+    // 1. Controles y Sliders Interactivos con flow
+    ImGui::SetNextItemWidth(115.0f);
+    ImGui::SliderFloat("Soporte (%)", &min_support_filter_, 0.2f, 2.0f, "%.2f%%");
+
+    same_line_flow(175.0f);
+    ImGui::SetNextItemWidth(105.0f);
+    ImGui::SliderFloat("Confianza (%)", &min_confidence_filter_, 5.0f, 30.0f, "%.1f%%");
+
+    same_line_flow(150.0f);
+    ImGui::SetNextItemWidth(90.0f);
+    ImGui::SliderFloat("Lift (x)", &min_lift_filter_, 1.0f, 8.0f, "%.1fx");
+
+    same_line_flow(65.0f);
+    if (ImGui::Button("Reset")) {
         min_support_filter_ = 0.4f;
         min_confidence_filter_ = 8.0f;
         min_lift_filter_ = 1.5f;
     }
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(160.0f);
+
+    const float rem_w = ImGui::GetContentRegionAvail().x;
+    if (rem_w >= 140.0f) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(std::min(150.0f, rem_w - 10.0f));
+    } else {
+        ImGui::SetNextItemWidth(std::min(180.0f, ImGui::GetWindowWidth() * 0.45f));
+    }
     ImGui::InputTextWithHint("##filter_rules", "Buscar producto...", rule_search_filter_, sizeof(rule_search_filter_));
 
     std::string search_str = rule_search_filter_;
@@ -1067,145 +1207,166 @@ void AnalyticsDashboardView::render_association_rules_tab() {
         }
     }
 
+    // Selector de Modo de Vista
+    ImGui::TextDisabled("Vista:");
     ImGui::SameLine();
-    ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "(%zu / %zu reglas visibles)",
+    ImGui::RadioButton("Mapa de Reglas", &assoc_rules_view_mode_, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("Tabla de Reglas", &assoc_rules_view_mode_, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("Vista Combinada", &assoc_rules_view_mode_, 2);
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "(%zu / %zu visibles)",
                        active_indices.size(), association_rules_.size());
 
     // 2. Gráfico Interactivo ImPlot de Dispersión
-    const float plot_h = std::max(180.0f, ImGui::GetContentRegionAvail().y * 0.55f);
-    ImPlotFlags plot_flags = ImPlotFlags_None;
-    if (show_crosshairs_) plot_flags |= ImPlotFlags_Crosshairs;
+    if (assoc_rules_view_mode_ != 1) {
+        const float plot_h = (assoc_rules_view_mode_ == 0)
+                                 ? std::max(160.0f, ImGui::GetContentRegionAvail().y - 10.0f)
+                                 : std::max(150.0f, ImGui::GetContentRegionAvail().y * 0.48f);
+        ImPlotFlags plot_flags = ImPlotFlags_None;
+        if (show_crosshairs_) plot_flags |= ImPlotFlags_Crosshairs;
 
-    ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
-    ImPlotAxisFlags y_flags = ImPlotAxisFlags_None;
-    if (auto_fit_requested_) {
-        x_flags |= ImPlotAxisFlags_AutoFit;
-        y_flags |= ImPlotAxisFlags_AutoFit;
-    }
-
-    if (ImPlot::BeginPlot("##AssocRulesPlot", ImVec2(-1, plot_h), plot_flags)) {
-        ImPlot::SetupAxes("Soporte Transaccional (%)", "Nivel de Confianza (%)", x_flags, y_flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0.35, 1.15);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, 6.0, 27.0);
-
-        for (size_t idx : active_indices) {
-            const auto& r = association_rules_[idx];
-            double x = r.support_pct;
-            double y = r.confidence_pct;
-
-            const float t = std::clamp(static_cast<float>((r.lift - 1.0) / 6.5), 0.0f, 1.0f);
-            ImVec4 col(0.35f + t * 0.60f, 0.20f + t * 0.65f, 0.85f * (1.0f - t * 0.75f), 0.95f);
-            if (static_cast<int>(idx) == selected_rule_idx_) {
-                col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-            }
-
-            ImPlotSpec spec;
-            spec.Marker = ImPlotMarker_Circle;
-            spec.MarkerSize = 7.0f + static_cast<float>(r.lift) * 1.4f;
-            spec.MarkerFillColor = col;
-            spec.MarkerLineColor = ImVec4(1.0f, 1.0f, 1.0f, 0.8f);
-
-            std::string item_id = "##rule_" + std::to_string(idx);
-            ImPlot::PlotScatter(item_id.c_str(), &x, &y, 1, spec);
-
-            if (r.lift > 7.0) {
-                ImPlot::Annotation(x, y, ImVec4(0.95f, 0.85f, 0.2f, 1.0f), ImVec2(15, -15), true,
-                                   "Regla Estrella: Lift 7.09x\nSir Rodney's Scones -> Sirop d'erable");
-            }
+        ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
+        ImPlotAxisFlags y_flags = ImPlotAxisFlags_None;
+        if (auto_fit_requested_) {
+            x_flags |= ImPlotAxisFlags_AutoFit;
+            y_flags |= ImPlotAxisFlags_AutoFit;
         }
 
-        if (ImPlot::IsPlotHovered()) {
-            ImPlotPoint mouse_pt = ImPlot::GetPlotMousePos();
-            double best_dist2 = 1e9;
-            int best_idx = -1;
+        if (ImPlot::BeginPlot("##AssocRulesPlot", ImVec2(-1, plot_h), plot_flags)) {
+            ImPlot::SetupAxes("Soporte Transaccional (%)", get_responsive_y_label("Nivel de Confianza (%)", "Confianza (%)", plot_h), x_flags, y_flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 0.35, 1.15);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, 6.0, 27.0);
+
             for (size_t idx : active_indices) {
                 const auto& r = association_rules_[idx];
-                double dx = (r.support_pct - mouse_pt.x) * 15.0;
-                double dy = (r.confidence_pct - mouse_pt.y);
-                double d2 = dx * dx + dy * dy;
-                if (d2 < best_dist2) {
-                    best_dist2 = d2;
-                    best_idx = static_cast<int>(idx);
-                }
-            }
-            if (best_idx >= 0 && best_dist2 < 4.0) {
-                const auto& br = association_rules_[best_idx];
-                ImGui::BeginTooltip();
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s -> %s", br.antecedent.c_str(), br.consequent.c_str());
-                ImGui::Separator();
-                ImGui::Text("Soporte: %.2f%% | Confianza: %.1f%%", br.support_pct, br.confidence_pct);
-                ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.2f, 1.0f), "Lift: %.2fx (Asociacion Positiva Muy Fuerte)", br.lift);
-                ImGui::Text("Palanca (Leverage): %.4f", br.leverage);
-                ImGui::EndTooltip();
+                double x = r.support_pct;
+                double y = r.confidence_pct;
 
-                if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                    selected_rule_idx_ = best_idx;
+                const float t = std::clamp(static_cast<float>((r.lift - 1.0) / 6.5), 0.0f, 1.0f);
+                ImVec4 col(0.35f + t * 0.60f, 0.20f + t * 0.65f, 0.85f * (1.0f - t * 0.75f), 0.95f);
+                if (static_cast<int>(idx) == selected_rule_idx_) {
+                    col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+                }
+
+                ImPlotSpec spec;
+                spec.Marker = ImPlotMarker_Circle;
+                spec.MarkerSize = 7.0f + static_cast<float>(r.lift) * 1.4f;
+                spec.MarkerFillColor = col;
+                spec.MarkerLineColor = ImVec4(1.0f, 1.0f, 1.0f, 0.8f);
+
+                std::string item_id = "##rule_" + std::to_string(idx);
+                ImPlot::PlotScatter(item_id.c_str(), &x, &y, 1, spec);
+
+                if (r.lift > 7.0) {
+                    ImPlot::Annotation(x, y, ImVec4(0.95f, 0.85f, 0.2f, 1.0f), ImVec2(15, -15), true,
+                                       "Regla Estrella: Lift 7.09x\nSir Rodney's Scones -> Sirop d'erable");
                 }
             }
+
+            if (ImPlot::IsPlotHovered()) {
+                ImPlotPoint mouse_pt = ImPlot::GetPlotMousePos();
+                double best_dist2 = 1e9;
+                int best_idx = -1;
+                for (size_t idx : active_indices) {
+                    const auto& r = association_rules_[idx];
+                    double dx = (r.support_pct - mouse_pt.x) * 15.0;
+                    double dy = (r.confidence_pct - mouse_pt.y);
+                    double d2 = dx * dx + dy * dy;
+                    if (d2 < best_dist2) {
+                        best_dist2 = d2;
+                        best_idx = static_cast<int>(idx);
+                    }
+                }
+                if (best_idx >= 0 && best_dist2 < 4.0) {
+                    const auto& br = association_rules_[best_idx];
+                    ImGui::BeginTooltip();
+                    ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "%s -> %s", br.antecedent.c_str(), br.consequent.c_str());
+                    ImGui::Separator();
+                    ImGui::Text("Soporte: %.2f%% | Confianza: %.1f%%", br.support_pct, br.confidence_pct);
+                    ImGui::TextColored(ImVec4(0.95f, 0.85f, 0.2f, 1.0f), "Lift: %.2fx (Asociacion Positiva Muy Fuerte)", br.lift);
+                    ImGui::Text("Palanca (Leverage): %.4f", br.leverage);
+                    ImGui::EndTooltip();
+
+                    if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                        selected_rule_idx_ = best_idx;
+                    }
+                }
+            }
+
+            ImPlot::EndPlot();
         }
-
-        ImPlot::EndPlot();
     }
     auto_fit_requested_ = false;
 
     // 3. Tabla Interactiva de Reglas con Selección
-    ImGui::TextDisabled("Haga clic sobre una regla para seleccionarla e inspeccionar su estrategia comercial:");
-    if (ImGui::BeginTable("##AssocRulesTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0, 160.0f))) {
-        ImGui::TableSetupColumn("Antecedente (A)", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Consecuente (B)", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Soporte (%)", ImGuiTableColumnFlags_WidthFixed, 90.0f);
-        ImGui::TableSetupColumn("Confianza (%)", ImGuiTableColumnFlags_WidthFixed, 95.0f);
-        ImGui::TableSetupColumn("Lift (x)", ImGuiTableColumnFlags_WidthFixed, 85.0f);
-        ImGui::TableSetupColumn("Estrategia Recomendada", ImGuiTableColumnFlags_WidthFixed, 160.0f);
-        ImGui::TableHeadersRow();
+    if (assoc_rules_view_mode_ != 0) {
+        ImGui::TextDisabled("Haga clic sobre una regla para seleccionarla e inspeccionar su estrategia comercial:");
+        const ImVec2 tbl_sz(0, (assoc_rules_view_mode_ == 1) ? -1 : 160.0f);
+        if (ImGui::BeginTable("##AssocRulesTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, tbl_sz)) {
+            ImGui::TableSetupColumn("Antecedente (A)", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Consecuente (B)", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Soporte (%)", ImGuiTableColumnFlags_WidthFixed, 90.0f);
+            ImGui::TableSetupColumn("Confianza (%)", ImGuiTableColumnFlags_WidthFixed, 95.0f);
+            ImGui::TableSetupColumn("Lift (x)", ImGuiTableColumnFlags_WidthFixed, 85.0f);
+            ImGui::TableSetupColumn("Estrategia Recomendada", ImGuiTableColumnFlags_WidthFixed, 160.0f);
+            ImGui::TableHeadersRow();
 
-        for (size_t idx : active_indices) {
-            const auto& r = association_rules_[idx];
-            ImGui::TableNextRow();
-            const bool is_sel = (static_cast<int>(idx) == selected_rule_idx_);
-            if (is_sel) {
-                ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(40, 80, 130, 180));
-            }
+            for (size_t idx : active_indices) {
+                const auto& r = association_rules_[idx];
+                ImGui::TableNextRow();
+                const bool is_sel = (static_cast<int>(idx) == selected_rule_idx_);
+                if (is_sel) {
+                    ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, IM_COL32(40, 80, 130, 180));
+                }
 
-            ImGui::TableNextColumn();
-            if (ImGui::Selectable(r.antecedent.c_str(), is_sel, ImGuiSelectableFlags_SpanAllColumns)) {
-                selected_rule_idx_ = static_cast<int>(idx);
+                ImGui::TableNextColumn();
+                if (ImGui::Selectable(r.antecedent.c_str(), is_sel, ImGuiSelectableFlags_SpanAllColumns)) {
+                    selected_rule_idx_ = static_cast<int>(idx);
+                }
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(r.consequent.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%.2f%%", r.support_pct);
+                ImGui::TableNextColumn();
+                ImGui::Text("%.1f%%", r.confidence_pct);
+                ImGui::TableNextColumn();
+                ImGui::TextColored(r.lift >= 3.0 ? ImVec4(0.95f, 0.85f, 0.2f, 1.0f) : ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "%.2fx", r.lift);
+                ImGui::TableNextColumn();
+                if (r.lift >= 4.0) {
+                    ImGui::TextColored(ImVec4(0.2f, 0.95f, 0.5f, 1.0f), "Bundle Promocional");
+                } else if (r.lift >= 2.0) {
+                    ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Cross-Selling Directo");
+                } else {
+                    ImGui::TextDisabled("Adyacencia en Gondola");
+                }
             }
-            ImGui::TableNextColumn();
-            ImGui::TextUnformatted(r.consequent.c_str());
-            ImGui::TableNextColumn();
-            ImGui::Text("%.2f%%", r.support_pct);
-            ImGui::TableNextColumn();
-            ImGui::Text("%.1f%%", r.confidence_pct);
-            ImGui::TableNextColumn();
-            ImGui::TextColored(r.lift >= 3.0 ? ImVec4(0.95f, 0.85f, 0.2f, 1.0f) : ImVec4(0.4f, 0.85f, 1.0f, 1.0f), "%.2fx", r.lift);
-            ImGui::TableNextColumn();
-            if (r.lift >= 4.0) {
-                ImGui::TextColored(ImVec4(0.2f, 0.95f, 0.5f, 1.0f), "Bundle Promocional");
-            } else if (r.lift >= 2.0) {
-                ImGui::TextColored(ImVec4(0.3f, 0.85f, 1.0f, 1.0f), "Cross-Selling Directo");
-            } else {
-                ImGui::TextDisabled("Adyacencia en Gondola");
-            }
+            ImGui::EndTable();
         }
-        ImGui::EndTable();
     }
 }
 
 void AnalyticsDashboardView::render_rfm_clustering_tab() {
-    // 1. Controles y Filtros de Clusters
-    ImGui::Text("Filtro de Clusters:");
-    ImGui::SameLine();
-    ImGui::Checkbox("Cluster 1 (Ocasionales)", &show_cluster_[0]);
-    ImGui::SameLine();
-    ImGui::Checkbox("Cluster 2 (VIPs)", &show_cluster_[1]);
-    ImGui::SameLine();
-    ImGui::Checkbox("Cluster 3 (Crecimiento)", &show_cluster_[2]);
-    ImGui::SameLine();
-    ImGui::Checkbox("Cluster 4 (Riesgo)", &show_cluster_[3]);
+    const float avail_w = ImGui::GetContentRegionAvail().x;
 
+    // 1. Controles y Filtros de Clusters con nombres responsivos
+    ImGui::Text("Filtros:");
     ImGui::SameLine();
-    ImGui::SetNextItemWidth(160.0f);
+    const bool compact_cb = (avail_w < 900.0f);
+    ImGui::Checkbox(compact_cb ? "C1 (Ocasional)" : "Cluster 1 (Ocasionales)", &show_cluster_[0]);
+    render_flow_checkbox(compact_cb ? "C2 (VIP)" : "Cluster 2 (VIPs)", &show_cluster_[1]);
+    render_flow_checkbox(compact_cb ? "C3 (Crecim.)" : "Cluster 3 (Crecimiento)", &show_cluster_[2]);
+    render_flow_checkbox(compact_cb ? "C4 (Riesgo)" : "Cluster 4 (Riesgo)", &show_cluster_[3]);
+
+    const float rem_w = ImGui::GetContentRegionAvail().x;
+    const float filter_w = 150.0f;
+    if (rem_w >= filter_w + 10.0f) {
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(std::min(filter_w, rem_w - 5.0f));
+    } else {
+        ImGui::SetNextItemWidth(std::min(180.0f, avail_w * 0.45f));
+    }
     ImGui::InputTextWithHint("##filter_cust", "Buscar cliente...", customer_search_filter_, sizeof(customer_search_filter_));
 
     std::string search_str = customer_search_filter_;
@@ -1221,10 +1382,9 @@ void AnalyticsDashboardView::render_rfm_clustering_tab() {
     }
 
     // 2. Tarjetas Métricas KPI Superiores
-    const float avail_w = ImGui::GetContentRegionAvail().x;
     ImGui::Columns(calculate_responsive_columns(avail_w), "##RFMClusterCols", false);
     render_metric_card("Cluster 2: Clientes VIP", ("3 Clientes ($" + std::to_string(static_cast<int>(cluster_revenue[1])) + "k)").c_str(),
-                       "Quick-Stop, Ernst, Save-a-lot (25% venta)", ImVec4(0.95f, 0.65f, 0.2f, 1.0f));
+                       "Top: Quick-Stop, Ernst, Save-a-lot", ImVec4(0.95f, 0.65f, 0.2f, 1.0f));
     ImGui::NextColumn();
     render_metric_card("Cluster 3: En Crecimiento", (std::to_string(cluster_counts[2]) + " Clientes ($" + std::to_string(static_cast<int>(cluster_revenue[2])) + "k)").c_str(),
                        "Frecuencia 8-19 ord., gasto medio-alto", ImVec4(0.4f, 0.9f, 0.5f, 1.0f));
@@ -1232,23 +1392,18 @@ void AnalyticsDashboardView::render_rfm_clustering_tab() {
     render_metric_card("Cluster 1: Ocasionales", (std::to_string(cluster_counts[0]) + " Clientes ($" + std::to_string(static_cast<int>(cluster_revenue[0])) + "k)").c_str(),
                        "Bajo volumen transaccional (<$11k)", ImVec4(0.45f, 0.75f, 1.0f, 1.0f));
     ImGui::NextColumn();
-    render_metric_card("Cluster 4: Riesgo Deserción", (std::to_string(cluster_counts[3]) + " Clientes Inactivos").c_str(),
+    render_metric_card("Cluster 4: En Riesgo", (std::to_string(cluster_counts[3]) + " Clientes Inactivos").c_str(),
                        "Recencia > 300 días sin compras", ImVec4(0.95f, 0.3f, 0.3f, 1.0f));
     ImGui::Columns(1);
 
-    // 3. Dos Gráficos Dinámicos ImPlot lado a lado
-    const float plot_w = (avail_w - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
-    const float plot_h = std::max(180.0f, ImGui::GetContentRegionAvail().y * 0.55f);
-
-    ImPlotFlags plot_flags = ImPlotFlags_None;
-    if (show_crosshairs_) plot_flags |= ImPlotFlags_Crosshairs;
-
-    ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
-    ImPlotAxisFlags y_flags = ImPlotAxisFlags_None;
-    if (auto_fit_requested_) {
-        x_flags |= ImPlotAxisFlags_AutoFit;
-        y_flags |= ImPlotAxisFlags_AutoFit;
-    }
+    // Selector de Modo de Vista para RFM
+    ImGui::TextDisabled("Vista:");
+    ImGui::SameLine();
+    ImGui::RadioButton("Gráficos RFM", &rfm_view_mode_, 0);
+    ImGui::SameLine();
+    ImGui::RadioButton("Tabla de Clientes", &rfm_view_mode_, 1);
+    ImGui::SameLine();
+    ImGui::RadioButton("Vista Combinada", &rfm_view_mode_, 2);
 
     const ImVec4 cluster_colors[4] = {
         ImVec4(0.45f, 0.75f, 1.0f, 0.9f),
@@ -1257,112 +1412,144 @@ void AnalyticsDashboardView::render_rfm_clustering_tab() {
         ImVec4(0.95f, 0.3f, 0.3f, 0.9f)
     };
 
-    // Gráfico Izquierdo: Frecuencia vs Facturación Neta
-    if (ImPlot::BeginPlot("##RFMFreqMonetaryPlot", ImVec2(plot_w, plot_h), plot_flags)) {
-        ImPlot::SetupAxes("Frecuencia (Total Ordenes)", "Facturacion Neta ($k USD)", x_flags, y_flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1, 0, 35);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -5, 120);
+    // 3. Dos Gráficos Dinámicos ImPlot (apilados si el ancho es estrecho)
+    if (rfm_view_mode_ != 1) {
+        const bool stack_vert = (avail_w < 780.0f);
+        const float plot_w = stack_vert ? avail_w : (avail_w - ImGui::GetStyle().ItemSpacing.x) * 0.5f;
+        const float plot_h = (rfm_view_mode_ == 0)
+                                 ? (stack_vert ? std::max(160.0f, ImGui::GetContentRegionAvail().y * 0.48f) : std::max(180.0f, ImGui::GetContentRegionAvail().y - 10.0f))
+                                 : (stack_vert ? 160.0f : std::max(160.0f, ImGui::GetContentRegionAvail().y * 0.52f));
 
-        for (int c_id = 0; c_id < 4; ++c_id) {
-            if (!show_cluster_[c_id]) continue;
-            std::vector<double> xs, ys;
-            for (const auto& c : rfm_customers_) {
-                if (c.cluster_id == c_id) {
-                    if (search_str.empty() || c.company_name.find(search_str) != std::string::npos || c.customer_id.find(search_str) != std::string::npos) {
-                        xs.push_back(c.frequency_orders);
-                        ys.push_back(c.monetary_net_k);
-                    }
-                }
-            }
-            if (!xs.empty()) {
-                ImPlotSpec spec;
-                spec.Marker = (c_id == 1) ? ImPlotMarker_Diamond : ImPlotMarker_Circle;
-                spec.MarkerSize = (c_id == 1) ? 9.0f : 6.0f;
-                spec.MarkerFillColor = cluster_colors[c_id];
-                spec.MarkerLineColor = ImVec4(1.0f, 1.0f, 1.0f, 0.8f);
+        ImPlotFlags plot_flags = ImPlotFlags_None;
+        if (show_crosshairs_) plot_flags |= ImPlotFlags_Crosshairs;
 
-                const char* c_labels[4] = { "C1: Ocasionales", "C2: VIPs", "C3: Crecimiento", "C4: Riesgo" };
-                ImPlot::PlotScatter(c_labels[c_id], xs.data(), ys.data(), static_cast<int>(xs.size()), spec);
-            }
+        ImPlotAxisFlags x_flags = ImPlotAxisFlags_None;
+        ImPlotAxisFlags y_flags = ImPlotAxisFlags_None;
+        if (auto_fit_requested_) {
+            x_flags |= ImPlotAxisFlags_AutoFit;
+            y_flags |= ImPlotAxisFlags_AutoFit;
         }
 
-        ImPlot::Annotation(28.0, 110.28, ImVec4(0.3f, 0.85f, 1.0f, 1.0f), ImVec2(10, -15), true, "QUICK-Stop ($110.3k)");
-        ImPlot::Annotation(30.0, 104.87, ImVec4(0.95f, 0.65f, 0.2f, 1.0f), ImVec2(10, 15), true, "Ernst Handel ($104.9k)");
-        ImPlot::Annotation(31.0, 104.36, ImVec4(0.4f, 0.9f, 0.5f, 1.0f), ImVec2(10, -28), true, "Save-a-lot ($104.4k)");
+        // Gráfico Izquierdo: Frecuencia vs Facturación Neta
+        if (ImPlot::BeginPlot("##RFMFreqMonetaryPlot", ImVec2(plot_w, plot_h), plot_flags)) {
+            // Posicionar leyenda en SouthEast (área vacía sin datos de alta frecuencia y baja facturación)
+            ImPlot::SetupLegend(ImPlotLocation_SouthEast);
+            ImPlot::SetupAxes("Frecuencia (Total Ordenes)", get_responsive_y_label("Facturacion Neta ($k USD)", "$k USD", plot_h), x_flags, y_flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1, 0, 35);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -5, 120);
 
-        ImPlot::EndPlot();
-    }
-
-    ImGui::SameLine();
-
-    // Gráfico Derecho: Recencia vs Facturación Neta
-    if (ImPlot::BeginPlot("##RFMRecencyMonetaryPlot", ImVec2(plot_w, plot_h), plot_flags)) {
-        ImPlot::SetupAxes("Recencia (Dias sin Compras)", "Facturacion Neta ($k USD)", x_flags, y_flags);
-        ImPlot::SetupAxisLimits(ImAxis_X1, -20, 700);
-        ImPlot::SetupAxisLimits(ImAxis_Y1, -5, 120);
-
-        for (int c_id = 0; c_id < 4; ++c_id) {
-            if (!show_cluster_[c_id]) continue;
-            std::vector<double> xs, ys;
-            for (const auto& c : rfm_customers_) {
-                if (c.cluster_id == c_id) {
-                    if (search_str.empty() || c.company_name.find(search_str) != std::string::npos || c.customer_id.find(search_str) != std::string::npos) {
-                        xs.push_back(c.recency_days);
-                        ys.push_back(c.monetary_net_k);
+            for (int c_id = 0; c_id < 4; ++c_id) {
+                if (!show_cluster_[c_id]) continue;
+                std::vector<double> xs, ys;
+                for (const auto& c : rfm_customers_) {
+                    if (c.cluster_id == c_id) {
+                        if (search_str.empty() || c.company_name.find(search_str) != std::string::npos || c.customer_id.find(search_str) != std::string::npos) {
+                            xs.push_back(c.frequency_orders);
+                            ys.push_back(c.monetary_net_k);
+                        }
                     }
                 }
-            }
-            if (!xs.empty()) {
-                ImPlotSpec spec;
-                spec.Marker = (c_id == 3) ? ImPlotMarker_Cross : ImPlotMarker_Circle;
-                spec.MarkerSize = (c_id == 3) ? 8.0f : 6.0f;
-                spec.MarkerFillColor = cluster_colors[c_id];
-                spec.MarkerLineColor = ImVec4(1.0f, 1.0f, 1.0f, 0.8f);
+                if (!xs.empty()) {
+                    ImPlotSpec spec;
+                    spec.Marker = (c_id == 1) ? ImPlotMarker_Diamond : ImPlotMarker_Circle;
+                    spec.MarkerSize = (c_id == 1) ? 9.0f : 6.0f;
+                    spec.MarkerFillColor = cluster_colors[c_id];
+                    spec.MarkerLineColor = ImVec4(1.0f, 1.0f, 1.0f, 0.8f);
 
-                const char* c_labels[4] = { "C1: Ocasionales", "C2: VIPs", "C3: Crecimiento", "C4: Riesgo" };
-                ImPlot::PlotScatter(c_labels[c_id], xs.data(), ys.data(), static_cast<int>(xs.size()), spec);
+                    const char* c_labels[4] = { "C1: Ocasionales", "C2: VIPs", "C3: Crecimiento", "C4: Riesgo" };
+                    ImPlot::PlotScatter(c_labels[c_id], xs.data(), ys.data(), static_cast<int>(xs.size()), spec);
+                }
             }
+
+            // Anotaciones separadas sin solapamiento entre sí ni con la leyenda
+            ImPlot::Annotation(28.0, 110.28, ImVec4(0.3f, 0.85f, 1.0f, 1.0f), ImVec2(-110, -18), true, "QUICK-Stop ($110.3k)");
+            ImPlot::Annotation(30.0, 104.87, ImVec4(0.95f, 0.65f, 0.2f, 1.0f), ImVec2(-80, 20), true, "Ernst Handel ($104.9k)");
+            ImPlot::Annotation(31.0, 104.36, ImVec4(0.4f, 0.9f, 0.5f, 1.0f), ImVec2(10, -20), true, "Save-a-lot ($104.4k)");
+
+            ImPlot::EndPlot();
         }
 
-        ImPlot::Annotation(655.0, 3.52, ImVec4(0.95f, 0.3f, 0.3f, 1.0f), ImVec2(-20, -15), true, "Paris specialites (Inactivo: 655 d)");
+        if (!stack_vert) {
+            ImGui::SameLine();
+        } else {
+            ImGui::Spacing();
+        }
 
-        ImPlot::EndPlot();
+        // Gráfico Derecho: Recencia vs Facturación Neta
+        if (ImPlot::BeginPlot("##RFMRecencyMonetaryPlot", ImVec2(plot_w, plot_h), plot_flags)) {
+            // Posicionar leyenda en NorthEast para evitar cubrir datos en NorthWest
+            ImPlot::SetupLegend(ImPlotLocation_NorthEast);
+            ImPlot::SetupAxes("Recencia (Dias sin Compras)", get_responsive_y_label("Facturacion Neta ($k USD)", "$k USD", plot_h), x_flags, y_flags);
+            ImPlot::SetupAxisLimits(ImAxis_X1, -20, 700);
+            ImPlot::SetupAxisLimits(ImAxis_Y1, -5, 120);
+
+            for (int c_id = 0; c_id < 4; ++c_id) {
+                if (!show_cluster_[c_id]) continue;
+                std::vector<double> xs, ys;
+                for (const auto& c : rfm_customers_) {
+                    if (c.cluster_id == c_id) {
+                        if (search_str.empty() || c.company_name.find(search_str) != std::string::npos || c.customer_id.find(search_str) != std::string::npos) {
+                            xs.push_back(c.recency_days);
+                            ys.push_back(c.monetary_net_k);
+                        }
+                    }
+                }
+                if (!xs.empty()) {
+                    ImPlotSpec spec;
+                    spec.Marker = (c_id == 3) ? ImPlotMarker_Cross : ImPlotMarker_Circle;
+                    spec.MarkerSize = (c_id == 3) ? 8.0f : 6.0f;
+                    spec.MarkerFillColor = cluster_colors[c_id];
+                    spec.MarkerLineColor = ImVec4(1.0f, 1.0f, 1.0f, 0.8f);
+
+                    const char* c_labels[4] = { "C1: Ocasionales", "C2: VIPs", "C3: Crecimiento", "C4: Riesgo" };
+                    ImPlot::PlotScatter(c_labels[c_id], xs.data(), ys.data(), static_cast<int>(xs.size()), spec);
+                }
+            }
+
+            // Anotación con desplazamiento a la izquierda y elevación para no recortarse
+            ImPlot::Annotation(655.0, 3.52, ImVec4(0.95f, 0.3f, 0.3f, 1.0f), ImVec2(-185, -28), true, "Paris specialites (Inactivo: 655 d)");
+
+            ImPlot::EndPlot();
+        }
     }
     auto_fit_requested_ = false;
 
     // 4. Tabla Detallada de Clientes y Asignación RFM
-    if (ImGui::BeginTable("##RFMCustomersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY, ImVec2(0, 160.0f))) {
-        ImGui::TableSetupColumn("Codigo", ImGuiTableColumnFlags_WidthFixed, 70.0f);
-        ImGui::TableSetupColumn("Empresa / Cliente", ImGuiTableColumnFlags_WidthStretch);
-        ImGui::TableSetupColumn("Recencia (Dias)", ImGuiTableColumnFlags_WidthFixed, 105.0f);
-        ImGui::TableSetupColumn("Frecuencia (Ord.)", ImGuiTableColumnFlags_WidthFixed, 115.0f);
-        ImGui::TableSetupColumn("Facturacion Neta ($k)", ImGuiTableColumnFlags_WidthFixed, 130.0f);
-        ImGui::TableSetupColumn("Cluster K-Means", ImGuiTableColumnFlags_WidthFixed, 140.0f);
-        ImGui::TableHeadersRow();
+    if (rfm_view_mode_ != 0) {
+        const ImVec2 tbl_sz(0, (rfm_view_mode_ == 1) ? -1 : 160.0f);
+        if (ImGui::BeginTable("##RFMCustomersTable", 6, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY | ImGuiTableFlags_ScrollX, tbl_sz)) {
+            ImGui::TableSetupColumn("Codigo", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+            ImGui::TableSetupColumn("Empresa / Cliente", ImGuiTableColumnFlags_WidthStretch);
+            ImGui::TableSetupColumn("Recencia (Dias)", ImGuiTableColumnFlags_WidthFixed, 105.0f);
+            ImGui::TableSetupColumn("Frecuencia (Ord.)", ImGuiTableColumnFlags_WidthFixed, 115.0f);
+            ImGui::TableSetupColumn("Facturacion Neta ($k)", ImGuiTableColumnFlags_WidthFixed, 130.0f);
+            ImGui::TableSetupColumn("Cluster K-Means", ImGuiTableColumnFlags_WidthFixed, 140.0f);
+            ImGui::TableHeadersRow();
 
-        for (size_t i = 0; i < rfm_customers_.size(); ++i) {
-            const auto& c = rfm_customers_[i];
-            if (!show_cluster_[c.cluster_id]) continue;
-            if (!search_str.empty() && c.company_name.find(search_str) == std::string::npos && c.customer_id.find(search_str) == std::string::npos) {
-                continue;
+            for (size_t i = 0; i < rfm_customers_.size(); ++i) {
+                const auto& c = rfm_customers_[i];
+                if (!show_cluster_[c.cluster_id]) continue;
+                if (!search_str.empty() && c.company_name.find(search_str) == std::string::npos && c.customer_id.find(search_str) == std::string::npos) {
+                    continue;
+                }
+
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextColored(cluster_colors[c.cluster_id], "%s", c.customer_id.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(c.company_name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%.0f d", c.recency_days);
+                ImGui::TableNextColumn();
+                ImGui::Text("%.0f", c.frequency_orders);
+                ImGui::TableNextColumn();
+                ImGui::Text("$%.2f k", c.monetary_net_k);
+                ImGui::TableNextColumn();
+                const char* c_names[4] = { "C1: Ocasional", "C2: VIP", "C3: Crecimiento", "C4: Desercion" };
+                ImGui::TextColored(cluster_colors[c.cluster_id], "%s", c_names[c.cluster_id]);
             }
-
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            ImGui::TextColored(cluster_colors[c.cluster_id], "%s", c.customer_id.c_str());
-            ImGui::TableNextColumn();
-            ImGui::TextUnformatted(c.company_name.c_str());
-            ImGui::TableNextColumn();
-            ImGui::Text("%.0f d", c.recency_days);
-            ImGui::TableNextColumn();
-            ImGui::Text("%.0f", c.frequency_orders);
-            ImGui::TableNextColumn();
-            ImGui::Text("$%.2f k", c.monetary_net_k);
-            ImGui::TableNextColumn();
-            const char* c_names[4] = { "C1: Ocasional", "C2: VIP", "C3: Crecimiento", "C4: Desercion" };
-            ImGui::TextColored(cluster_colors[c.cluster_id], "%s", c_names[c.cluster_id]);
+            ImGui::EndTable();
         }
-        ImGui::EndTable();
     }
 }
 

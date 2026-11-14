@@ -107,6 +107,7 @@ private:
     std::vector<double> prod_x_;
     std::vector<double> prod_net_k_;
     std::vector<double> prod_share_pct_;
+    int prod_ranking_count_{10};
 
     // Estructuras de datos para Minería de Datos: Reglas de Asociación (Apriori)
     struct AssociationRuleUI {
@@ -123,6 +124,7 @@ private:
     float min_lift_filter_{1.5f};
     int selected_rule_idx_{-1};
     char rule_search_filter_[64]{""};
+    int assoc_rules_view_mode_{0}; // 0: Mapa de Dispersión, 1: Tabla de Reglas, 2: Vista Combinada
 
     // Estructuras de datos para Minería de Datos: Clustering y Segmentación RFM (K-Means)
     struct CustomerRFMUI {
@@ -137,6 +139,7 @@ private:
     bool show_cluster_[4]{true, true, true, true};
     int selected_customer_idx_{-1};
     char customer_search_filter_[64]{""};
+    int rfm_view_mode_{0}; // 0: Gráficos RFM, 1: Tabla de Clientes, 2: Vista Combinada
 
     // Mensaje de estado para notificaciones de exportación
     std::string status_message_;

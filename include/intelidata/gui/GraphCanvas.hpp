@@ -92,6 +92,7 @@ public:
 
     // Centra y ajusta la cámara para ver todos los nodos
     void fit_to_screen(Float32 width, Float32 height);
+    void request_fit() noexcept { fit_requested_frames_ = 2; }
 
     // Acceso a la lista de nodos
     [[nodiscard]] const std::vector<NodeUI>& nodes() const noexcept { return nodes_; }
@@ -119,6 +120,7 @@ private:
     Float32 zoom_{1.0f};
     bool is_panning_{false};
     ImVec2 last_canvas_sz_{0.0f, 0.0f};
+    int fit_requested_frames_{2};
 
     // Filtros y visualización
     char search_filter_[128]{""};

@@ -224,14 +224,13 @@ void InspectorView::render_entity_business_sheet(const model::TableAST& tbl, con
     }
 
     ImGui::Spacing();
-    render_badge(tbl.inferred_role.c_str(), role_color(tbl.inferred_role));
-    ImGui::SameLine();
+    render_responsive_badge(tbl.inferred_role.c_str(), role_color(tbl.inferred_role), ImVec4(1.0f, 1.0f, 1.0f, 1.0f), false);
 
     std::string cluster_str = "Cluster Espectral C" + std::to_string(tbl.spectral_cluster);
-    render_badge(cluster_str.c_str(), ImVec4(0.25f, 0.45f, 0.75f, 1.0f));
+    render_responsive_badge(cluster_str.c_str(), ImVec4(0.25f, 0.45f, 0.75f, 1.0f), ImVec4(1.0f, 1.0f, 1.0f, 1.0f), true);
 
-    ImGui::SameLine();
-    ImGui::TextDisabled("| %zu Columnas", tbl.columns.size());
+    const std::string cols_str = std::to_string(tbl.columns.size()) + " Columnas";
+    render_responsive_badge(cols_str.c_str(), ImVec4(0.20f, 0.25f, 0.35f, 1.0f), ImVec4(0.85f, 0.85f, 0.85f, 1.0f), true);
 
     ImGui::Spacing();
     const float pr_val = static_cast<float>(tbl.pagerank_gravity);
