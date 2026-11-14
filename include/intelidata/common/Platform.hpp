@@ -7,6 +7,12 @@
 // Detección de plataforma
 #if defined(_WIN32) || defined(_WIN64)
     #define INTELIDATA_PLATFORM_WINDOWS 1
+    #ifndef NOMINMAX
+        #define NOMINMAX 1
+    #endif
+    #ifndef WIN32_LEAN_AND_MEAN
+        #define WIN32_LEAN_AND_MEAN 1
+    #endif
 #elif defined(__linux__)
     #define INTELIDATA_PLATFORM_LINUX 1
 #elif defined(__APPLE__)

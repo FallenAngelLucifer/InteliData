@@ -1,4 +1,5 @@
 #include "intelidata/gui/DataHubView.hpp"
+#include "intelidata/common/PathUtils.hpp"
 #include <imgui.h>
 #include <cstring>
 #include <algorithm>
@@ -10,7 +11,7 @@ namespace fs = std::filesystem;
 
 DataHubView::DataHubView() {
     try {
-        current_dir_ = fs::current_path();
+        current_dir_ = intelidata::common::PathUtils::find_project_root();
         if (fs::exists(current_dir_ / "samples")) {
             current_dir_ = current_dir_ / "samples";
         }
@@ -133,12 +134,12 @@ void DataHubView::render_file_explorer() {
 
     // Barra de navegación rápida
     if (ImGui::Button("Ir a Proyecto")) {
-        current_dir_ = fs::current_path();
+        current_dir_ = intelidata::common::PathUtils::find_project_root();
         refresh_file_list();
     }
     ImGui::SameLine();
     if (ImGui::Button("Ir a samples/")) {
-        current_dir_ = fs::current_path() / "samples";
+        current_dir_ = intelidata::common::PathUtils::find_project_root() / "samples";
         refresh_file_list();
     }
     ImGui::SameLine();
@@ -233,7 +234,7 @@ void DataHubView::render_presets() {
         ImGui::TextDisabled("Ruta: %s", path);
         if (ImGui::Button(btn_text, ImVec2(220, 30))) {
             pending_request_.type = IngestionSourceType::FilePath;
-            pending_request_.path = path;
+            pending_request_.path = intelidata::common::PathUtils::resolve_path(path).string();
             pending_request_.options = options_;
             has_request_ = true;
         }

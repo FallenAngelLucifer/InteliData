@@ -333,6 +333,19 @@ model::SemanticAST Engine::analyze(
                 col_ast.recommended_name = prof.column_name;
             }
 
+            // Registrar auditoría forense de Benford para cualquier métrica numérica evaluada
+            if (prof.is_numeric && prof.benford_res.total_valid_samples >= 30) {
+                col_ast.benford_p_value = prof.benford_res.p_value;
+                col_ast.benford_chi_square = prof.benford_res.chi_square_stat;
+                col_ast.benford_mad = prof.benford_res.mean_absolute_deviation;
+                col_ast.benford_samples = prof.benford_res.total_valid_samples;
+                col_ast.benford_observed_digits.clear();
+                for (UInt32 d = 1; d <= 9; ++d) {
+                    col_ast.benford_observed_digits.push_back(prof.benford_res.observed_proportions[d]);
+                }
+                col_ast.benford_interpretation = core::generate_benford_interpretation(t_name, prof.column_name, prof.benford_res);
+            }
+
             tbl_ast.columns.push_back(std::move(col_ast));
         }
 

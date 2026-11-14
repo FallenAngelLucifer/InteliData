@@ -92,14 +92,24 @@ void render_single_token(const Token& token) {
             ImGui::TextUnformatted(token.text.c_str());
             ImGui::PopStyleColor();
             break;
-        case TokenType::InlineCode:
-            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.18f, 0.24f, 0.35f, 0.9f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.18f, 0.24f, 0.35f, 0.9f));
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.18f, 0.24f, 0.35f, 0.9f));
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.40f, 0.85f, 1.0f, 1.0f));
-            ImGui::SmallButton(token.text.c_str());
-            ImGui::PopStyleColor(4);
+        case TokenType::InlineCode: {
+            const ImVec2 cur = ImGui::GetCursorScreenPos();
+            const ImVec2 txt_sz = ImGui::CalcTextSize(token.text.c_str());
+            const float pad_x = 4.0f;
+            const float pad_y = 1.0f;
+            const ImVec2 badge_sz(txt_sz.x + pad_x * 2.0f, txt_sz.y + pad_y * 2.0f);
+
+            ImDrawList* dl = ImGui::GetWindowDrawList();
+            dl->AddRectFilled(cur, ImVec2(cur.x + badge_sz.x, cur.y + badge_sz.y),
+                              IM_COL32(36, 48, 72, 220), 3.0f);
+            dl->AddRect(cur, ImVec2(cur.x + badge_sz.x, cur.y + badge_sz.y),
+                        IM_COL32(75, 120, 180, 180), 3.0f);
+            dl->AddText(ImVec2(cur.x + pad_x, cur.y + pad_y),
+                        IM_COL32(102, 224, 255, 255), token.text.c_str());
+
+            ImGui::Dummy(badge_sz);
             break;
+        }
         case TokenType::Link:
             ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35f, 0.75f, 1.0f, 1.0f));
             ImGui::TextUnformatted(token.text.c_str());
@@ -152,6 +162,14 @@ bool is_separator_row(const std::vector<std::string>& cells) {
 void MarkdownRenderer::render_formatted_text(std::string_view text, bool wrapped) {
     if (text.empty()) return;
 
+    // Si el texto contiene saltos de línea (\n), contiene estructura multi-línea o bloques
+    // Markdown (encabezados ###, listas *, tablas, etc.), delegar a render_document
+    // para preservar fielmente los saltos de línea, jerarquías y listas.
+    if (text.find('\n') != std::string_view::npos) {
+        render_document(text);
+        return;
+    }
+
     auto tokens = tokenize_inline(text);
     if (tokens.empty()) return;
 
@@ -176,48 +194,53 @@ void MarkdownRenderer::render_formatted_text(std::string_view text, bool wrapped
     }
 
     // Renderizado con control de saltos de línea adaptativo para texto enriquecido
-    const float avail_w = ImGui::GetContentRegionAvail().x;
-    const float cur_start_x = ImGui::GetCursorScreenPos().x;
-    const float window_right = ImGui::GetWindowPos().x + ImGui::GetWindowContentRegionMax().x;
-    const float right_bound = (avail_w > 40.0f) ? std::min(cur_start_x + avail_w, window_right) : window_right;
+    const float max_x = ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x - 4.0f;
     const float space_width = ImGui::CalcTextSize(" ").x;
+    bool is_first_item = true;
 
     for (size_t t_idx = 0; t_idx < tokens.size(); ++t_idx) {
         const auto& tok = tokens[t_idx];
 
         if (tok.type == TokenType::InlineCode) {
-            const float item_width = ImGui::CalcTextSize(tok.text.c_str()).x + ImGui::GetStyle().FramePadding.x * 2.0f;
-            const float cur_x = ImGui::GetCursorScreenPos().x;
-            if (t_idx > 0 && cur_x + item_width > right_bound && cur_x > cur_start_x + 5.0f) {
-                // Siguiente línea
-            } else if (t_idx > 0) {
-                ImGui::SameLine(0.0f, 3.0f);
+            const float item_width = ImGui::CalcTextSize(tok.text.c_str()).x + 8.0f;
+            const float next_x = is_first_item ? ImGui::GetCursorScreenPos().x : (ImGui::GetItemRectMax().x + 3.0f);
+
+            if (is_first_item) {
+                if (next_x + item_width > max_x && ImGui::GetCursorPosX() > ImGui::GetStyle().WindowPadding.x + 2.0f) {
+                    ImGui::NewLine();
+                }
+            } else {
+                if (next_x + item_width <= max_x) {
+                    ImGui::SameLine(0.0f, 3.0f);
+                }
             }
             render_single_token(tok);
+            is_first_item = false;
             continue;
         }
 
         // Para texto normal, negrita o enlaces, separamos palabras para ajuste dinámico
         std::istringstream iss(tok.text);
         std::string word;
-        bool first_word = true;
 
         while (iss >> word) {
             Token word_tok = tok;
             word_tok.text = word;
             const float word_width = ImGui::CalcTextSize(word.c_str()).x;
-            const float cur_x = ImGui::GetCursorScreenPos().x;
+            const float next_x = is_first_item ? ImGui::GetCursorScreenPos().x : (ImGui::GetItemRectMax().x + space_width);
 
-            if (t_idx == 0 && first_word) {
-                // Primer token de la línea
-            } else if (cur_x + word_width + space_width > right_bound && cur_x > cur_start_x + 5.0f) {
-                // Salto a nueva línea
+            if (is_first_item) {
+                if (next_x + word_width > max_x && ImGui::GetCursorPosX() > ImGui::GetStyle().WindowPadding.x + 2.0f) {
+                    ImGui::NewLine();
+                }
             } else {
-                ImGui::SameLine(0.0f, space_width);
+                if (next_x + word_width <= max_x) {
+                    ImGui::SameLine(0.0f, space_width);
+                }
             }
 
             render_single_token(word_tok);
-            first_word = false;
+            is_first_item = false;
         }
     }
 }
@@ -279,15 +302,20 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
     while (line_idx < lines.size()) {
         const auto& line = lines[line_idx];
 
+        std::string_view trimmed = line;
+        while (!trimmed.empty() && (trimmed.front() == ' ' || trimmed.front() == '\t')) {
+            trimmed.remove_prefix(1);
+        }
+
         // 1. Líneas vacías
-        if (line.empty()) {
+        if (trimmed.empty()) {
             ImGui::Spacing();
             line_idx++;
             continue;
         }
 
         // 2. Bloque de código multi-línea (```)
-        if (line.starts_with("```")) {
+        if (trimmed.starts_with("```")) {
             std::string code_content;
             line_idx++;
             while (line_idx < lines.size() && !lines[line_idx].starts_with("```")) {
@@ -303,10 +331,12 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
             ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.08f, 0.09f, 0.12f, 1.0f));
             ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.20f, 0.25f, 0.35f, 0.7f));
             const std::string child_id = "##code_block_" + std::to_string(block_counter++);
-            if (ImGui::BeginChild(child_id.c_str(), ImVec2(0, box_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar)) {
+            if (ImGui::BeginChild(child_id.c_str(), ImVec2(0, box_height), ImGuiChildFlags_Borders)) {
+                ImGui::PushTextWrapPos(0.0f);
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.45f, 0.85f, 0.95f, 1.0f));
                 ImGui::TextUnformatted(code_content.c_str());
                 ImGui::PopStyleColor();
+                ImGui::PopTextWrapPos();
             }
             ImGui::EndChild();
             ImGui::PopStyleColor(2);
@@ -315,7 +345,7 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
         }
 
         // 3. Tablas Markdown (| ... |)
-        if (line.starts_with("|")) {
+        if (trimmed.starts_with("|")) {
             std::vector<std::vector<std::string>> table_rows;
             while (line_idx < lines.size() && lines[line_idx].starts_with("|")) {
                 table_rows.push_back(parse_table_row(lines[line_idx]));
@@ -332,19 +362,11 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
                 const int col_count = static_cast<int>(headers.size());
                 if (col_count > 0) {
                     const std::string t_id = "##md_table_" + std::to_string(table_counter++);
-                    const float avail_table_w = ImGui::GetContentRegionAvail().x;
 
                     ImGuiTableFlags t_flags = ImGuiTableFlags_Borders |
                                               ImGuiTableFlags_RowBg |
-                                              ImGuiTableFlags_Resizable;
-
-                    // Si hay pocas columnas o suficiente espacio horizontal, ajustar al ancho exacto del panel
-                    if (col_count <= 3 || avail_table_w >= static_cast<float>(col_count) * 110.0f) {
-                        t_flags |= ImGuiTableFlags_SizingStretchProp;
-                    } else {
-                        // En paneles estrechos con muchas columnas, permitir scroll horizontal limpio interno
-                        t_flags |= ImGuiTableFlags_ScrollX;
-                    }
+                                              ImGuiTableFlags_Resizable |
+                                              ImGuiTableFlags_SizingStretchProp;
 
                     if (ImGui::BeginTable(t_id.c_str(), col_count, t_flags)) {
                         for (int c = 0; c < col_count; ++c) {
@@ -356,14 +378,18 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
                         for (size_t r = first_data_row; r < table_rows.size(); ++r) {
                             const auto& row = table_rows[r];
                             ImGui::TableNextRow();
+                            ImGui::PushID(static_cast<int>(r));
                             for (int c = 0; c < col_count; ++c) {
                                 ImGui::TableNextColumn();
+                                ImGui::PushID(c);
                                 if (c < static_cast<int>(row.size())) {
                                     ImGui::PushTextWrapPos(0.0f);
                                     render_formatted_text(row[c], true);
                                     ImGui::PopTextWrapPos();
                                 }
+                                ImGui::PopID();
                             }
+                            ImGui::PopID();
                         }
                         ImGui::EndTable();
                         ImGui::Spacing();
@@ -374,7 +400,7 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
         }
 
         // 4. Citas en bloque (> ...)
-        if (line.starts_with(">")) {
+        if (trimmed.starts_with(">")) {
             std::vector<std::string> quote_lines;
             while (line_idx < lines.size() && lines[line_idx].starts_with(">")) {
                 std::string_view q = lines[line_idx].substr(1);
@@ -398,7 +424,7 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
         }
 
         // 5. Separadores horizontales (--- o ***)
-        if (line == "---" || line == "***" || line == "___") {
+        if (trimmed == "---" || trimmed == "***" || trimmed == "___") {
             ImGui::Spacing();
             ImGui::Separator();
             ImGui::Spacing();
@@ -407,28 +433,36 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
         }
 
         // 6. Encabezados (#, ##, ###, ####)
-        if (line.starts_with("#### ")) {
+        if (trimmed.starts_with("#### ")) {
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.85f, 0.65f, 0.95f, 1.0f), "%s", strip_markdown(line.substr(5)).c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.85f, 0.65f, 0.95f, 1.0f));
+            ImGui::TextWrapped("%s", strip_markdown(trimmed.substr(5)).c_str());
+            ImGui::PopStyleColor();
             line_idx++;
             continue;
         }
-        if (line.starts_with("### ")) {
+        if (trimmed.starts_with("### ")) {
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.95f, 0.80f, 0.35f, 1.0f), "%s", strip_markdown(line.substr(4)).c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.95f, 0.80f, 0.35f, 1.0f));
+            ImGui::TextWrapped("%s", strip_markdown(trimmed.substr(4)).c_str());
+            ImGui::PopStyleColor();
             line_idx++;
             continue;
         }
-        if (line.starts_with("## ")) {
+        if (trimmed.starts_with("## ")) {
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.35f, 0.90f, 0.60f, 1.0f), "%s", strip_markdown(line.substr(3)).c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.35f, 0.90f, 0.60f, 1.0f));
+            ImGui::TextWrapped("%s", strip_markdown(trimmed.substr(3)).c_str());
+            ImGui::PopStyleColor();
             ImGui::Spacing();
             line_idx++;
             continue;
         }
-        if (line.starts_with("# ")) {
+        if (trimmed.starts_with("# ")) {
             ImGui::Spacing();
-            ImGui::TextColored(ImVec4(0.30f, 0.85f, 1.0f, 1.0f), "%s", strip_markdown(line.substr(2)).c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.30f, 0.85f, 1.0f, 1.0f));
+            ImGui::TextWrapped("%s", strip_markdown(trimmed.substr(2)).c_str());
+            ImGui::PopStyleColor();
             ImGui::Separator();
             ImGui::Spacing();
             line_idx++;
@@ -436,28 +470,32 @@ void MarkdownRenderer::render_document(std::string_view markdown) {
         }
 
         // 7. Listas con viñetas (* o - o +)
-        if ((line.starts_with("* ") || line.starts_with("- ") || line.starts_with("+ "))) {
+        if (trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("+ ")) {
             ImGui::Bullet();
             ImGui::SameLine();
-            render_formatted_text(line.substr(2), true);
+            ImGui::BeginGroup();
+            render_formatted_text(trimmed.substr(2), true);
+            ImGui::EndGroup();
             line_idx++;
             continue;
         }
 
         // 8. Listas numeradas (1. , 2. , etc.)
-        const size_t dot = line.find(". ");
+        const size_t dot = trimmed.find(". ");
         if (dot != std::string_view::npos && dot <= 3 &&
-            std::all_of(line.begin(), line.begin() + static_cast<long>(dot), ::isdigit)) {
-            const std::string num = std::string(line.substr(0, dot + 1));
+            std::all_of(trimmed.begin(), trimmed.begin() + static_cast<long>(dot), ::isdigit)) {
+            const std::string num = std::string(trimmed.substr(0, dot + 1));
             ImGui::TextDisabled("%s", num.c_str());
             ImGui::SameLine();
-            render_formatted_text(line.substr(dot + 2), true);
+            ImGui::BeginGroup();
+            render_formatted_text(trimmed.substr(dot + 2), true);
+            ImGui::EndGroup();
             line_idx++;
             continue;
         }
 
         // 9. Párrafo estándar
-        render_formatted_text(line, true);
+        render_formatted_text(trimmed, true);
         line_idx++;
     }
 }

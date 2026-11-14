@@ -21,7 +21,7 @@ if(NOT TARGET nlohmann_json::nlohmann_json)
     message(STATUS "Configurando nlohmann_json 3.11.3...")
     FetchContent_Declare(
         nlohmann_json
-        URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz
+        URL https://github.com/nlohmann/json/archive/refs/tags/v3.11.3.zip
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
     )
     set(JSON_BuildTests OFF CACHE INTERNAL "")

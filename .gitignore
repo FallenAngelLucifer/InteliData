@@ -10,6 +10,7 @@ compile_commands.json
 .cmake/
 
 # IDE and editor settings
+.vs/
 .vscode/*
 !.vscode/launch.json
 !.vscode/tasks.json
@@ -17,14 +18,32 @@ compile_commands.json
 .idea/
 *.swp
 *~
+*.lock
+.~lock.*
 
 # OS and GUI artifacts
 .DS_Store
 Thumbs.db
 imgui.ini
 
+# Documents and internal documentation folder
+docs/
+*.docx
+*.doc
+*.tmp
+
+# Transient analysis and schema outputs in root
+doc_*.md
+schema*.json
+views_*.sql
+*.ppm
+
 # Generated samples and analysis outputs
 samples/ecommerce_obfuscated.db
 samples/ecommerce_ast.json
 samples/ecommerce_views.sql
 samples/ecommerce_dictionary.md
+
+# Python cache
+__pycache__/
+*.pyc

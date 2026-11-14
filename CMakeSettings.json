@@ -1,0 +1,92 @@
+{
+  "configurations": [
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${workspaceRoot}\\out\\build\\${name}",
+      "installRoot": "${workspaceRoot}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "--output-on-failure",
+      "environments": [
+        {
+          "INTELIDATA_ROOT": "${workspaceRoot}",
+          "WORKSPACE_ROOT": "${workspaceRoot}"
+        }
+      ],
+      "variables": [
+        {
+          "name": "CMAKE_CXX_STANDARD",
+          "value": "20",
+          "type": "STRING"
+        },
+        {
+          "name": "INTELIDATA_BUILD_GUI",
+          "value": "ON",
+          "type": "BOOL"
+        },
+        {
+          "name": "INTELIDATA_BUILD_TESTS",
+          "value": "ON",
+          "type": "BOOL"
+        },
+        {
+          "name": "INTELIDATA_ENABLE_AVX2",
+          "value": "ON",
+          "type": "BOOL"
+        },
+        {
+          "name": "INTELIDATA_ENABLE_DUCKDB",
+          "value": "ON",
+          "type": "BOOL"
+        }
+      ]
+    },
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "Release",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${workspaceRoot}\\out\\build\\${name}",
+      "installRoot": "${workspaceRoot}\\out\\install\\${name}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "",
+      "ctestCommandArgs": "--output-on-failure",
+      "environments": [
+        {
+          "INTELIDATA_ROOT": "${workspaceRoot}",
+          "WORKSPACE_ROOT": "${workspaceRoot}"
+        }
+      ],
+      "variables": [
+        {
+          "name": "CMAKE_CXX_STANDARD",
+          "value": "20",
+          "type": "STRING"
+        },
+        {
+          "name": "INTELIDATA_BUILD_GUI",
+          "value": "ON",
+          "type": "BOOL"
+        },
+        {
+          "name": "INTELIDATA_BUILD_TESTS",
+          "value": "ON",
+          "type": "BOOL"
+        },
+        {
+          "name": "INTELIDATA_ENABLE_AVX2",
+          "value": "ON",
+          "type": "BOOL"
+        },
+        {
+          "name": "INTELIDATA_ENABLE_DUCKDB",
+          "value": "ON",
+          "type": "BOOL"
+        }
+      ]
+    }
+  ]
+}

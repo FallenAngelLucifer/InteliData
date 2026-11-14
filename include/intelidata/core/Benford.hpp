@@ -3,6 +3,7 @@
 #include "intelidata/common/Platform.hpp"
 #include "intelidata/common/Types.hpp"
 #include <array>
+#include <string>
 #include <string_view>
 #include <span>
 #include <optional>
@@ -44,6 +45,19 @@ struct BenfordResult {
  * @brief Calcula el p-value exacto para chi-cuadrado con 8 grados de libertad en forma analítica cerrada.
  */
 [[nodiscard]] Float64 chi_square_8df_p_value(Float64 chi2) noexcept;
+
+/**
+ * @brief Genera un dictamen e interpretación forense dinámica basada en los resultados de la Ley de Benford.
+ * @param table_name Nombre de la tabla o entidad analizada.
+ * @param col_name Nombre de la columna o métrica evaluada.
+ * @param res Resultado del análisis de Benford con frecuencias observadas, chi2, p-value y MAD.
+ * @return Texto interpretativo enriquecido en formato Markdown.
+ */
+[[nodiscard]] std::string generate_benford_interpretation(
+    std::string_view table_name,
+    std::string_view col_name,
+    const BenfordResult& res
+);
 
 /**
  * @brief Acumulador de histograma del primer dígito para prueba de Benford.

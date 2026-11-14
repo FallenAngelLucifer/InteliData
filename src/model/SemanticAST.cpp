@@ -9,8 +9,17 @@ nlohmann::json ColumnAST::to_json() const {
     j["recommended_name"] = recommended_name;
     j["entropy"] = entropy;
     j["is_unique"] = is_unique;
-    if (benford_p_value > 0.0) {
+    if (benford_p_value > 0.0 || benford_chi_square > 0.0) {
         j["benford_p_value"] = benford_p_value;
+        j["benford_chi_square"] = benford_chi_square;
+        j["benford_mad"] = benford_mad;
+        j["benford_samples"] = benford_samples;
+        if (!benford_observed_digits.empty()) {
+            j["benford_observed_digits"] = benford_observed_digits;
+        }
+        if (!benford_interpretation.empty()) {
+            j["benford_interpretation"] = benford_interpretation;
+        }
     }
     if (!distribution.empty()) {
         j["distribution"] = distribution;
@@ -32,6 +41,13 @@ ColumnAST ColumnAST::from_json(const nlohmann::json& j) {
     col.entropy = j.value("entropy", 0.0);
     col.is_unique = j.value("is_unique", false);
     col.benford_p_value = j.value("benford_p_value", 0.0);
+    col.benford_chi_square = j.value("benford_chi_square", 0.0);
+    col.benford_mad = j.value("benford_mad", 0.0);
+    col.benford_samples = j.value("benford_samples", static_cast<UInt64>(0));
+    if (j.contains("benford_observed_digits")) {
+        col.benford_observed_digits = j["benford_observed_digits"].get<std::vector<Float64>>();
+    }
+    col.benford_interpretation = j.value("benford_interpretation", "");
     col.distribution = j.value("distribution", "");
     if (j.contains("markov_absorbing_states")) {
         col.markov_absorbing_states = j["markov_absorbing_states"].get<std::vector<std::string>>();

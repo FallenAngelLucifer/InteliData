@@ -9,9 +9,10 @@ function(target_apply_intelidata_compiler_flags TARGET_NAME)
             /permissive-
             /utf-8
             /EHsc
+            /bigobj
             /Zc:__cplusplus
             /volatile:iso
-            $<$<CONFIG:Release>:/O2 /GL /Gw>
+            $<$<CONFIG:Release>:/O2 /Gw>
         )
         if(INTELIDATA_ENABLE_AVX2)
             target_compile_options(${TARGET_NAME} PRIVATE /arch:AVX2)

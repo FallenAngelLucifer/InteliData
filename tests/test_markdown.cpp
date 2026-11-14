@@ -73,6 +73,21 @@ TEST_CASE("MarkdownRenderer: render_formatted_text y render_document ejecutan si
         MarkdownRenderer::render_document(doc);
     }
 
+    SECTION("render_document y render_formatted_text con reporte forense Benford") {
+        const std::string benford_md =
+            "### Dictamen de Auditoria Forense (Conformidad Aceptable)\n\n"
+            "La prueba valida que la columna `Freight` cumple la Ley de Benford.\n\n"
+            "#### Analisis Forense de Concentracion:\n\n"
+            "* **Sobrerrepresentacion Critica en Digito 4:** Frecuencia observada **11.81%**.\n"
+            "* **Indice MAD de Nigrini:** `MAD = 0.0094`.\n\n"
+            "#### Recomendaciones para Control Interno:\n\n"
+            "1. Realizar muestreo estratificado.\n"
+            "2. Validar politicas comerciales.\n";
+
+        MarkdownRenderer::render_document(benford_md);
+        MarkdownRenderer::render_formatted_text(benford_md, true);
+    }
+
     ImGui::Render();
     ImGui::DestroyContext(ctx);
 }

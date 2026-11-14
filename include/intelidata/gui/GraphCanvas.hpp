@@ -16,6 +16,18 @@ enum class NodeColorMode {
     PageRankGravity
 };
 
+enum class GraphViewMode {
+    TableSchemaDSV,   // Vista de Tablas Relacionales Conectadas (Estilo DSV / SQL Server)
+    EntityNetwork     // Grafo de Red y Fuerzas 2D (Circular)
+};
+
+struct ColumnUI {
+    std::string name;
+    std::string type;
+    bool is_pk{false};
+    bool is_fk{false};
+};
+
 struct NodeUI {
     Size id{0};
     std::string name;
@@ -33,6 +45,9 @@ struct NodeUI {
     std::string business_purpose;
     bool is_dragging{false};
     bool is_selected{false};
+    std::vector<ColumnUI> columns;
+    Float32 card_width{210.0f};
+    Float32 card_height{130.0f};
 };
 
 struct EdgeUI {
@@ -68,6 +83,13 @@ public:
     void select_node_by_name(std::string_view name);
     void clear_selection() noexcept { selected_node_ = nullptr; }
 
+    // Modo de vista: Esquema de Tablas (DSV) vs Grafo de Red (Circular)
+    void set_view_mode(GraphViewMode mode) noexcept;
+    [[nodiscard]] GraphViewMode view_mode() const noexcept { return view_mode_; }
+
+    // Reorganiza las tablas en un esquema espacial armónico y espacioso (estilo DSV)
+    void arrange_schema_layout();
+
     // Centra y ajusta la cámara para ver todos los nodos
     void fit_to_screen(Float32 width, Float32 height);
 
@@ -82,6 +104,9 @@ private:
     std::vector<EdgeUI> edges_;
     const NodeUI* selected_node_{nullptr};
 
+    // Modo de visualización alternable
+    GraphViewMode view_mode_{GraphViewMode::TableSchemaDSV};
+
     // Física
     Float32 temperature_{100.0f};
     bool physics_enabled_{true};
@@ -93,6 +118,7 @@ private:
     ImVec2 pan_offset_{0.0f, 0.0f};
     Float32 zoom_{1.0f};
     bool is_panning_{false};
+    ImVec2 last_canvas_sz_{0.0f, 0.0f};
 
     // Filtros y visualización
     char search_filter_[128]{""};

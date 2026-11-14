@@ -1,6 +1,7 @@
 #include "intelidata/pipeline/Engine.hpp"
 #include "intelidata/pipeline/DDLGenerator.hpp"
 #include "intelidata/ingestion/DuckDBAdapter.hpp"
+#include "intelidata/common/PathUtils.hpp"
 #include <iostream>
 #include <fstream>
 #include <filesystem>
@@ -14,11 +15,11 @@ void print_usage(const char* prog_name) {
     std::cout << "==============================================================================\n";
     std::cout << "Uso: " << prog_name << " [opciones]\n\n";
     std::cout << "Opciones Requeridas:\n";
-    std::cout << "  --input <ruta>         Archivo de entrada (.parquet, .csv, .sqlite)\n\n";
+    std::cout << "  --input <ruta>         Archivo de entrada (.parquet, .csv, .sqlite, .db)\n\n";
     std::cout << "Opciones de Salida:\n";
     std::cout << "  --output-json <ruta>   Ruta para guardar el AST semantico JSON (default: schema.json)\n";
-    std::cout << "  --output-sql <ruta>    Ruta para guardar las vistas SQL DDL (opcional)\n";
-    std::cout << "  --output-docs <ruta>   Ruta para guardar el Diccionario en Markdown (opcional)\n";
+    std::cout << "  --output-sql <ruta>    Ruta para guardar las vistas SQL DDL (alias: --output-ddl)\n";
+    std::cout << "  --output-docs <ruta>   Ruta para guardar el Diccionario en Markdown con graficas\n";
     std::cout << "  --help, -h             Muestra este mensaje de ayuda\n";
 }
 
@@ -37,7 +38,7 @@ int main(int argc, char* argv[]) {
             input_path = argv[++i];
         } else if (arg == "--output-json" && i + 1 < argc) {
             output_json = argv[++i];
-        } else if (arg == "--output-sql" && i + 1 < argc) {
+        } else if ((arg == "--output-sql" || arg == "--output-ddl") && i + 1 < argc) {
             output_sql = argv[++i];
         } else if (arg == "--output-docs" && i + 1 < argc) {
             output_docs = argv[++i];
@@ -50,14 +51,14 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    const fs::path in_path(input_path);
+    const fs::path in_path = intelidata::common::PathUtils::resolve_path(input_path);
     if (!fs::exists(in_path)) {
-        std::cerr << "Error: El archivo '" << input_path << "' no existe.\n";
+        std::cerr << "Error: El archivo '" << input_path << "' no existe (busqueda universal: " << in_path.string() << ").\n";
         return 1;
     }
 
     std::cout << "[InteliData] Inicializando motor de ingesta universal DuckDB...\n";
-    std::cout << "[InteliData] Cargando archivo: " << in_path.filename().string() << "...\n";
+    std::cout << "[InteliData] Cargando archivo: " << in_path.filename().string() << " (Ruta: " << in_path.string() << ")...\n";
     intelidata::ingestion::DuckDBAdapter adapter(in_path.string());
     if (!adapter.is_valid()) {
         std::cerr << "Error al abrir origen de datos: " << in_path.string() << "\n";
@@ -80,7 +81,11 @@ int main(int argc, char* argv[]) {
 
     // Guardar AST JSON
     std::cout << "[InteliData] Exportando JSON semantico a: " << output_json << "\n";
-    std::ofstream json_file(output_json);
+    fs::path json_p(output_json);
+    if (json_p.has_parent_path()) {
+        fs::create_directories(json_p.parent_path());
+    }
+    std::ofstream json_file(json_p);
     if (json_file.is_open()) {
         json_file << ast.to_json_string(2);
     } else {
@@ -90,7 +95,11 @@ int main(int argc, char* argv[]) {
     // Guardar Vistas SQL DDL si fue solicitado
     if (!output_sql.empty()) {
         std::cout << "[InteliData] Exportando vistas SQL DDL a: " << output_sql << "\n";
-        std::ofstream sql_file(output_sql);
+        fs::path sql_p(output_sql);
+        if (sql_p.has_parent_path()) {
+            fs::create_directories(sql_p.parent_path());
+        }
+        std::ofstream sql_file(sql_p);
         if (sql_file.is_open()) {
             sql_file << intelidata::pipeline::DDLGenerator::generate_sql_views(ast);
         } else {
@@ -98,15 +107,10 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    // Guardar Diccionario Markdown si fue solicitado
+    // Guardar Diccionario Markdown y empaquetar gráficas si fue solicitado
     if (!output_docs.empty()) {
-        std::cout << "[InteliData] Exportando diccionario en Markdown a: " << output_docs << "\n";
-        std::ofstream doc_file(output_docs);
-        if (doc_file.is_open()) {
-            doc_file << intelidata::pipeline::DDLGenerator::generate_data_dictionary_markdown(ast);
-        } else {
-            std::cerr << "Error: No se pudo escribir en '" << output_docs << "'.\n";
-        }
+        std::cout << "[InteliData] Exportando diccionario en Markdown y graficas analiticas a: " << output_docs << "\n";
+        intelidata::pipeline::DDLGenerator::export_report_with_assets(ast, output_docs);
     }
 
     std::cout << "[InteliData] Proceso completado exitosamente.\n";

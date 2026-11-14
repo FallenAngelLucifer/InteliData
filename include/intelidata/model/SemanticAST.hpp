@@ -15,6 +15,11 @@ struct ColumnAST {
     Float64 entropy{0.0};
     bool is_unique{false};
     Float64 benford_p_value{0.0};
+    Float64 benford_chi_square{0.0};
+    Float64 benford_mad{0.0};
+    UInt64 benford_samples{0};
+    std::vector<Float64> benford_observed_digits; // 9 valores para dígitos d=1..9
+    std::string benford_interpretation;
     std::string distribution;
     std::vector<std::string> markov_absorbing_states;
     std::string business_meaning;

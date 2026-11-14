@@ -67,3 +67,46 @@ TEST_CASE("Benford: Secuencia uniforme o secuencial rechaza la Ley de Benford", 
     REQUIRE(result.p_value < 1e-6);
     REQUIRE_FALSE(result.is_benford_distributed());
 }
+
+TEST_CASE("Benford: Generacion de interpretacion forense dinamica y adaptativa", "[benford]") {
+    SECTION("Muestra insuficiente (< 30 observaciones)") {
+        BenfordResult res{};
+        res.total_valid_samples = 15;
+        const auto interp = generate_benford_interpretation("Orders", "Freight", res);
+        REQUIRE(interp.find("Muestra insuficiente") != std::string::npos);
+        REQUIRE(interp.find("15") != std::string::npos);
+    }
+
+    SECTION("Conformidad Estricta con distribucion de Benford") {
+        BenfordAccumulator acc;
+        double val = 1.0;
+        for (int i = 0; i < 600; ++i) {
+            acc.update(val);
+            val *= 2.0;
+            if (val > 1e14) val /= 1e14;
+        }
+        const auto res = acc.evaluate();
+        const auto interp = generate_benford_interpretation("Facturas", "TotalVenta", res);
+
+        REQUIRE(interp.find("Conformidad Estricta") != std::string::npos);
+        REQUIRE(interp.find("Facturas") != std::string::npos);
+        REQUIRE(interp.find("TotalVenta") != std::string::npos);
+        REQUIRE(interp.find("Recomendaciones para Control Interno") != std::string::npos);
+    }
+
+    SECTION("No Conformidad / Deriva detectada en distribucion no-Benford") {
+        BenfordAccumulator acc;
+        for (int d = 1; d <= 9; ++d) {
+            for (int i = 0; i < 80; ++i) {
+                acc.update(static_cast<double>(d * 100 + i));
+            }
+        }
+        const auto res = acc.evaluate();
+        const auto interp = generate_benford_interpretation("OrderDetails", "UnitPrice", res);
+
+        REQUIRE(interp.find("No Conformidad") != std::string::npos);
+        REQUIRE(interp.find("Deriva por") != std::string::npos);
+        REQUIRE(interp.find("Chi-cuadrado") != std::string::npos);
+        REQUIRE(interp.find("UnitPrice") != std::string::npos);
+    }
+}

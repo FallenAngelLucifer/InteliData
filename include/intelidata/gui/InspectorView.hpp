@@ -26,6 +26,10 @@ public:
 
     // Retorna el índice de columna seleccionada
     [[nodiscard]] int selected_column_idx() const noexcept { return selected_column_idx_; }
+    void set_inspector_tab(int tab) noexcept { inspector_tab_ = tab; }
+    void set_entity_sheet_tab(int tab) noexcept { entity_sheet_tab_ = tab; }
+    void set_selected_column_idx(int idx) noexcept { selected_column_idx_ = idx; }
+    void set_ddl_viewer_tab(int tab) noexcept { ddl_viewer_tab_ = tab; }
 
     // Consulta si el usuario solicitó seleccionar una tabla desde las tarjetas de subdominios
     [[nodiscard]] bool has_table_selection_request() const noexcept { return !requested_table_.empty(); }
@@ -40,7 +44,10 @@ private:
     void render_entity_business_sheet(const model::TableAST& tbl, const model::SemanticAST& ast);
 
     int selected_column_idx_{0};
+    int selected_benford_col_idx_{0};
     int inspector_tab_{0};
+    int entity_sheet_tab_{-1};
+    int ddl_viewer_tab_{-1};
     float toast_timer_{0.0f};
     std::string toast_message_;
     std::string requested_table_;
